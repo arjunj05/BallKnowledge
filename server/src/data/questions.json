@@ -1,0 +1,107 @@
+[
+  {
+    "id": "q_mongolia_capital",
+    "category": "Geography",
+    "clue": "This ancient city was the capital of an empire located in central Mongolia. Founded in 1639 as a Buddhist monastery, it became a permanent settlement and trading hub. Today it houses nearly half the country's population and remains the capital of Mongolia.",
+    "acceptedAnswers": ["ulaanbaatar", "ulan bator", "ulan batar", "ulaan baatar"],
+    "displayAnswer": "Ulaanbaatar"
+  },
+  {
+    "id": "q_element_au",
+    "category": "Science",
+    "clue": "This chemical element has been prized since ancient times for its lustrous appearance and resistance to corrosion. Its atomic number is 79, and its symbol comes from the Latin word 'aurum' meaning 'shining dawn'. It's often used in jewelry and as a store of value.",
+    "acceptedAnswers": ["gold", "au"],
+    "displayAnswer": "Gold"
+  },
+  {
+    "id": "q_shakespeare_play",
+    "category": "Literature",
+    "clue": "This Shakespeare tragedy features a Danish prince who seeks revenge after his father's ghost reveals he was murdered by his own brother. The play contains the famous soliloquy beginning 'To be, or not to be' and ends with nearly all main characters dead.",
+    "acceptedAnswers": ["hamlet", "the tragedy of hamlet"],
+    "displayAnswer": "Hamlet"
+  },
+  {
+    "id": "q_amazon_river",
+    "category": "Geography",
+    "clue": "This river carries more water than any other in the world, accounting for about 20% of all freshwater that flows into the oceans. It flows through the largest rainforest on Earth and is home to the piranha and the pink river dolphin. Its name comes from Greek mythology.",
+    "acceptedAnswers": ["amazon", "amazon river", "the amazon", "rio amazonas"],
+    "displayAnswer": "Amazon River"
+  },
+  {
+    "id": "q_beethoven_symphony",
+    "category": "Music",
+    "clue": "This symphony, completed in 1824, was revolutionary for including a choir and vocal soloists in its final movement. The composer was almost completely deaf when he conducted its premiere. Its final movement features a setting of Schiller's 'Ode to Joy'.",
+    "acceptedAnswers": ["beethoven's 9th", "9th symphony", "symphony no 9", "ninth symphony", "beethovens ninth", "ode to joy"],
+    "displayAnswer": "Beethoven's 9th Symphony"
+  },
+  {
+    "id": "q_pythagoras",
+    "category": "Mathematics",
+    "clue": "This ancient Greek mathematician and philosopher founded a school that believed numbers were the essence of all things. He is credited with a theorem about right triangles that states the square of the hypotenuse equals the sum of the squares of the other two sides.",
+    "acceptedAnswers": ["pythagoras", "pythagorus"],
+    "displayAnswer": "Pythagoras"
+  },
+  {
+    "id": "q_great_wall",
+    "category": "History",
+    "clue": "This massive defensive structure was built over many centuries to protect against invasions from the north. Construction began during the 7th century BC, with major work done during the Ming Dynasty. It stretches over 13,000 miles and is one of the most impressive architectural feats in human history.",
+    "acceptedAnswers": ["great wall of china", "the great wall", "great wall", "chinese wall"],
+    "displayAnswer": "Great Wall of China"
+  },
+  {
+    "id": "q_mona_lisa",
+    "category": "Art",
+    "clue": "This Renaissance portrait, painted between 1503 and 1519, is famous for the subject's enigmatic smile. It was created by an Italian polymath and is now housed behind bulletproof glass in the Louvre. The subject is believed to be Lisa Gherardini, wife of a Florentine merchant.",
+    "acceptedAnswers": ["mona lisa", "the mona lisa", "la gioconda", "la joconde"],
+    "displayAnswer": "Mona Lisa"
+  },
+  {
+    "id": "q_mars_planet",
+    "category": "Space",
+    "clue": "This planet is home to the largest volcano in the solar system, Olympus Mons. It has two small moons named Phobos and Deimos. Its reddish appearance comes from iron oxide on its surface, and it's named after the Roman god of war.",
+    "acceptedAnswers": ["mars"],
+    "displayAnswer": "Mars"
+  },
+  {
+    "id": "q_chess_piece",
+    "category": "Games",
+    "clue": "This chess piece can move any number of squares horizontally, vertically, or diagonally, making it the most powerful piece on the board. In the original Indian game, this piece was called the 'vizier' or advisor. It's typically represented by a crown symbol.",
+    "acceptedAnswers": ["queen", "the queen"],
+    "displayAnswer": "Queen"
+  },
+  {
+    "id": "q_nobel_prize",
+    "category": "History",
+    "clue": "These prestigious awards were established by a Swedish inventor and businessman who felt guilty about his invention of dynamite. First awarded in 1901, they recognize achievements in Physics, Chemistry, Medicine, Literature, and Peace. The Economics prize was added in 1968.",
+    "acceptedAnswers": ["nobel prize", "nobel prizes", "the nobel prize", "nobel"],
+    "displayAnswer": "Nobel Prize"
+  },
+  {
+    "id": "q_mitochondria",
+    "category": "Biology",
+    "clue": "Often called the 'powerhouse of the cell,' this organelle generates most of the cell's supply of ATP through a process called cellular respiration. It has its own DNA, separate from the nucleus, supporting the theory that it was once a free-living organism.",
+    "acceptedAnswers": ["mitochondria", "mitochondrion", "the mitochondria"],
+    "displayAnswer": "Mitochondria"
+  },
+  {
+    "id": "q_olympics_rings",
+    "category": "Sports",
+    "clue": "This symbol consists of five interlocking circles representing the union of five continents in athletic competition. The colors—blue, yellow, black, green, and red on a white background—were chosen because at least one appears in every nation's flag. It was designed in 1913.",
+    "acceptedAnswers": ["olympic rings", "olympics rings", "the olympic rings", "five rings"],
+    "displayAnswer": "Olympic Rings"
+  },
+  {
+    "id": "q_pi_number",
+    "category": "Mathematics",
+    "clue": "This irrational number is the ratio of a circle's circumference to its diameter. It begins 3.14159... and continues infinitely without repeating. Ancient civilizations approximated it, but it wasn't proven irrational until 1761. It's often represented by the 16th letter of the Greek alphabet.",
+    "acceptedAnswers": ["pi", "3.14", "3.14159"],
+    "displayAnswer": "Pi"
+  },
+  {
+    "id": "q_photosynthesis",
+    "category": "Science",
+    "clue": "This biological process converts light energy, usually from the sun, into chemical energy stored in glucose. It takes place primarily in the chloroplasts of plant cells and requires carbon dioxide and water. As a byproduct, it releases oxygen into the atmosphere.",
+    "acceptedAnswers": ["photosynthesis"],
+    "displayAnswer": "Photosynthesis"
+  }
+]
