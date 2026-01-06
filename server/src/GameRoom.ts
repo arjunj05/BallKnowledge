@@ -23,13 +23,31 @@ import {
   ResolutionOutcome,
   BetAction,
 } from "shared";
-import questions from "./data/questions.json";
+import { GameService } from "./services/GameService";
+import { UserService } from "./services/UserService";
 
 interface PlayerState {
   balance: number;
   balanceAtQuestionStart: number;
   foldsRemaining: number;
   answer: string | null;
+}
+
+interface RoundData {
+  roundNumber: number;
+  category: string;
+  clue: string;
+  correctAnswer: string;
+  potAmount: number;
+  player1Bet: number;
+  player2Bet: number;
+  player1Answer: string | null;
+  player2Answer: string | null;
+  player1Correct: boolean | null;
+  player2Correct: boolean | null;
+  winner: string | null;
+  player1BalanceAfter: number;
+  player2BalanceAfter: number;
 }
 
 export class GameRoom {
@@ -42,6 +60,15 @@ export class GameRoom {
     P1: { balance: GAME_CONFIG.startingBalance, balanceAtQuestionStart: GAME_CONFIG.startingBalance, foldsRemaining: GAME_CONFIG.foldsPerPlayer, answer: null },
     P2: { balance: GAME_CONFIG.startingBalance, balanceAtQuestionStart: GAME_CONFIG.startingBalance, foldsRemaining: GAME_CONFIG.foldsPerPlayer, answer: null },
   };
+
+  // Database tracking
+  private playerDbIds: Record<PlayerId, string | null> = { P1: null, P2: null };
+  private playerMetadata: Record<PlayerId, { alias: string; elo: number } | null> = { P1: null, P2: null };
+  private roundHistory: RoundData[] = [];
+  private currentRoundData: Partial<RoundData> | null = null;
+
+  // Socket tracking for player identity validation
+  private socketPlayerMap: Map<string, PlayerId> = new Map();
 
   private bettingState: BettingState = {
     firstActor: "P1",
@@ -77,12 +104,16 @@ export class GameRoom {
   constructor(io: Server, roomId: string) {
     this.io = io;
     this.roomId = roomId;
-    this.selectQuestions();
   }
 
-  private selectQuestions(): void {
-    const shuffled = [...questions].sort(() => Math.random() - 0.5);
-    this.questions = shuffled.slice(0, GAME_CONFIG.questionsPerMatch) as Question[];
+  /**
+   * Load questions for this match from the database via GameService.
+   * Must be called before `startGame()`.
+   */
+  async loadQuestions(): Promise<void> {
+    const qs = await GameService.getRandomQuestions(GAME_CONFIG.questionsPerMatch);
+    // ensure we have a local copy
+    this.questions = [...qs];
   }
 
   private emit(event: string, data: unknown): void {
@@ -104,9 +135,59 @@ export class GameRoom {
     return player === "P1" ? "P2" : "P1";
   }
 
+  /**
+   * Register a socket ID with a player ID for identity validation
+   */
+  public registerSocket(socketId: string, player: PlayerId): void {
+    this.socketPlayerMap.set(socketId, player);
+    console.log(`[GameRoom ${this.roomId}] Registered socket ${socketId} as ${player}`);
+  }
+
+  /**
+   * Unregister a socket when it disconnects
+   */
+  public unregisterSocket(socketId: string): void {
+    this.socketPlayerMap.delete(socketId);
+  }
+
+  /**
+   * Validate that the socket making a request matches the expected player
+   * @returns The player ID if valid, null if invalid
+   */
+  private validateSocketPlayer(socketId: string, expectedPlayer: PlayerId): boolean {
+    const player = this.socketPlayerMap.get(socketId);
+    if (!player) {
+      console.error(`[GameRoom ${this.roomId}] Socket ${socketId} not registered to any player`);
+      return false;
+    }
+    if (player !== expectedPlayer) {
+      console.error(`[GameRoom ${this.roomId}] Socket ${socketId} is ${player} but tried to act as ${expectedPlayer}`);
+      return false;
+    }
+    return true;
+  }
+
   // ============================================================================
   // GAME START
   // ============================================================================
+
+  async setPlayerDbId(player: PlayerId, dbUserId: string): Promise<void> {
+    this.playerDbIds[player] = dbUserId;
+
+    // Fetch player metadata from database using the database ID
+    const user = await UserService.getUserById(dbUserId);
+    if (user) {
+      this.playerMetadata[player] = {
+        alias: user.alias || user.username || user.email.split('@')[0],
+        elo: user.stats?.eloRating || 1200,
+      };
+      console.log(`[GameRoom ${this.roomId}] Set ${player} metadata: ${user.alias || user.username || user.email.split('@')[0]} (ELO: ${user.stats?.eloRating || 1200})`);
+    }
+  }
+
+  getPlayerMetadata(player: PlayerId): { alias: string; elo: number } | null {
+    return this.playerMetadata[player];
+  }
 
   startGame(): void {
     console.log(`[GameRoom ${this.roomId}] Starting game`);
@@ -126,6 +207,18 @@ export class GameRoom {
     // Save balances at start of question for accurate change calculation
     this.players.P1.balanceAtQuestionStart = this.players.P1.balance;
     this.players.P2.balanceAtQuestionStart = this.players.P2.balance;
+
+    // Initialize round data tracking
+    this.currentRoundData = {
+      roundNumber: this.questionIndex,
+      category: question.category,
+      clue: question.clue,
+      correctAnswer: question.displayAnswer,
+      player1Answer: null,
+      player2Answer: null,
+      player1Correct: null,
+      player2Correct: null,
+    };
 
     const message: PhaseCategoryMessage = {
       type: "PHASE_CATEGORY",
@@ -221,7 +314,15 @@ export class GameRoom {
     }
   }
 
-  handleBet(player: PlayerId, amount: number): void {
+  handleBet(socketId: string, player: PlayerId, amount: number): void {
+    // Validate socket identity
+    if (!this.validateSocketPlayer(socketId, player)) {
+      return;
+    }
+    this.handleBetInternal(player, amount);
+  }
+
+  private handleBetInternal(player: PlayerId, amount: number): void {
     if (this.phase !== "BETTING" || this.bettingState.awaitingAction !== player) {
       return;
     }
@@ -247,7 +348,15 @@ export class GameRoom {
     this.sendBettingState();
   }
 
-  handleMatch(player: PlayerId): void {
+  handleMatch(socketId: string, player: PlayerId): void {
+    // Validate socket identity
+    if (!this.validateSocketPlayer(socketId, player)) {
+      return;
+    }
+    this.handleMatchInternal(player);
+  }
+
+  private handleMatchInternal(player: PlayerId): void {
     if (this.phase !== "BETTING" || this.bettingState.awaitingAction !== player) {
       return;
     }
@@ -268,7 +377,15 @@ export class GameRoom {
     this.startCluePhase();
   }
 
-  handleRaise(player: PlayerId, amount: number): void {
+  handleRaise(socketId: string, player: PlayerId, amount: number): void {
+    // Validate socket identity
+    if (!this.validateSocketPlayer(socketId, player)) {
+      return;
+    }
+    this.handleRaiseInternal(player, amount);
+  }
+
+  private handleRaiseInternal(player: PlayerId, amount: number): void {
     if (this.phase !== "BETTING" || this.bettingState.awaitingAction !== player) {
       return;
     }
@@ -294,7 +411,15 @@ export class GameRoom {
     this.sendBettingState();
   }
 
-  handleFold(player: PlayerId): void {
+  handleFold(socketId: string, player: PlayerId): void {
+    // Validate socket identity
+    if (!this.validateSocketPlayer(socketId, player)) {
+      return;
+    }
+    this.handleFoldInternal(player);
+  }
+
+  private handleFoldInternal(player: PlayerId): void {
     if (this.phase !== "BETTING" || this.bettingState.awaitingAction !== player) {
       return;
     }
@@ -317,19 +442,19 @@ export class GameRoom {
 
   private handleBetTimeout(player: PlayerId): void {
     console.log(`[GameRoom ${this.roomId}] Bet timeout for ${player}`);
-    // Auto-fold if out of time
+    // Auto-fold if out of time (internal call, bypass socket validation)
     if (this.players[player].foldsRemaining > 0) {
-      this.handleFold(player);
+      this.handleFoldInternal(player);
     } else {
       // If no folds left, auto-match or minimum bet
       const otherBet = this.bettingState.bets[this.getOtherPlayer(player)];
       if (otherBet !== null) {
-        this.handleMatch(player);
+        this.handleMatchInternal(player);
       } else {
         // First actor with no folds - force minimum bet
         const minBet = GAME_CONFIG.betTiers.find((t) => t <= this.players[player].balance);
         if (minBet) {
-          this.handleBet(player, minBet);
+          this.handleBetInternal(player, minBet);
         }
       }
     }
@@ -365,6 +490,13 @@ export class GameRoom {
   private startCluePhase(): void {
     this.phase = "CLUE";
     const question = this.getCurrentQuestion();
+
+    // Track betting results for this round
+    if (this.currentRoundData) {
+      this.currentRoundData.potAmount = this.bettingState.pot;
+      this.currentRoundData.player1Bet = this.bettingState.contributions.P1;
+      this.currentRoundData.player2Bet = this.bettingState.contributions.P2;
+    }
 
     this.clueState = {
       revealIndex: 0,
@@ -449,7 +581,15 @@ export class GameRoom {
   // BUZZ + ANSWER PHASE
   // ============================================================================
 
-  handleBuzz(player: PlayerId): void {
+  handleBuzz(socketId: string, player: PlayerId): void {
+    // Validate socket identity
+    if (!this.validateSocketPlayer(socketId, player)) {
+      return;
+    }
+    this.handleBuzzInternal(player);
+  }
+
+  private handleBuzzInternal(player: PlayerId): void {
     if (this.phase !== "CLUE") return;
     if (this.buzzerState[player] !== "AVAILABLE") return;
     if (this.buzzerState.currentlyAnswering) return;
@@ -474,7 +614,15 @@ export class GameRoom {
     }, GAME_CONFIG.answerTimeLimitSec * 1000);
   }
 
-  handleAnswer(player: PlayerId, text: string): void {
+  handleAnswer(socketId: string, player: PlayerId, text: string): void {
+    // Validate socket identity
+    if (!this.validateSocketPlayer(socketId, player)) {
+      return;
+    }
+    this.handleAnswerInternal(player, text);
+  }
+
+  private handleAnswerInternal(player: PlayerId, text: string): void {
     if (this.phase !== "ANSWER") return;
     if (this.buzzerState.currentlyAnswering !== player) return;
 
@@ -485,6 +633,17 @@ export class GameRoom {
     const correct = question.acceptedAnswers.includes(normalized);
 
     this.players[player].answer = text;
+
+    // Track answer in round data
+    if (this.currentRoundData) {
+      if (player === "P1") {
+        this.currentRoundData.player1Answer = text;
+        this.currentRoundData.player1Correct = correct;
+      } else {
+        this.currentRoundData.player2Answer = text;
+        this.currentRoundData.player2Correct = correct;
+      }
+    }
 
     const message: AnswerSubmittedMessage = {
       type: "ANSWER_SUBMITTED",
@@ -501,7 +660,12 @@ export class GameRoom {
     }
   }
 
-  handleAnswerTyping(player: PlayerId, text: string): void {
+  handleAnswerTyping(socketId: string, player: PlayerId, text: string): void {
+    // Validate socket identity
+    if (!this.validateSocketPlayer(socketId, player)) {
+      return;
+    }
+
     if (this.phase !== "ANSWER") return;
     if (this.buzzerState.currentlyAnswering !== player) return;
 
@@ -515,7 +679,7 @@ export class GameRoom {
 
   private handleAnswerTimeout(player: PlayerId): void {
     console.log(`[GameRoom ${this.roomId}] Answer timeout for ${player}`);
-    this.handleAnswer(player, "");
+    this.handleAnswerInternal(player, "");
   }
 
   private handleCorrectAnswer(player: PlayerId): void {
@@ -587,6 +751,12 @@ export class GameRoom {
     this.phase = "RESOLUTION";
 
     const question = this.getCurrentQuestion();
+
+    if (!question) {
+      console.error(`[GameRoom ${this.roomId}] Question is undefined at index ${this.questionIndex}`);
+      return;
+    }
+
     const nextPhaseAt = Date.now() + GAME_CONFIG.resolutionDisplaySec * 1000;
 
     // Calculate per-question change using saved start balance
@@ -594,6 +764,25 @@ export class GameRoom {
       P1: this.players.P1.balance - this.players.P1.balanceAtQuestionStart,
       P2: this.players.P2.balance - this.players.P2.balanceAtQuestionStart,
     };
+
+    // Complete round data and save to history
+    if (this.currentRoundData) {
+      // Determine winner based on outcome
+      let winner: string | null = null;
+      if (outcome === "P1_WIN") winner = "P1";
+      else if (outcome === "P2_WIN") winner = "P2";
+      else if (outcome === "P1_FOLD") winner = "P2";
+      else if (outcome === "P2_FOLD") winner = "P1";
+      // DRAW means both wrong, winner stays null
+
+      this.currentRoundData.winner = winner;
+      this.currentRoundData.player1BalanceAfter = this.players.P1.balance;
+      this.currentRoundData.player2BalanceAfter = this.players.P2.balance;
+
+      // Save completed round to history
+      this.roundHistory.push(this.currentRoundData as RoundData);
+      this.currentRoundData = null;
+    }
 
     const message: PhaseResolutionMessage = {
       type: "PHASE_RESOLUTION",
@@ -630,7 +819,7 @@ export class GameRoom {
   // GAME COMPLETE
   // ============================================================================
 
-  private endGame(): void {
+  private async endGame(): Promise<void> {
     this.phase = "COMPLETE";
     this.clearAllTimers();
 
@@ -654,6 +843,107 @@ export class GameRoom {
 
     this.emit(SocketEvents.PHASE_COMPLETE, message);
     console.log(`[GameRoom ${this.roomId}] Game complete. Winner: ${winner}`);
+
+    // Save game to database
+    await this.saveGameToDatabase(winner);
+  }
+
+  private async saveGameToDatabase(winner: "P1" | "P2" | "TIE"): Promise<void> {
+    try {
+      const player1DbId = this.playerDbIds.P1;
+      const player2DbId = this.playerDbIds.P2;
+
+      // Only save if both players have database IDs
+      if (!player1DbId || !player2DbId) {
+        console.log(`[GameRoom ${this.roomId}] Skipping game save - missing player database IDs`);
+        return;
+      }
+
+      // Get current player stats for ELO calculation
+      const player1Stats = await UserService.getUserById(player1DbId);
+      const player2Stats = await UserService.getUserById(player2DbId);
+
+      if (!player1Stats?.stats || !player2Stats?.stats) {
+        console.log(`[GameRoom ${this.roomId}] Skipping game save - missing player stats`);
+        return;
+      }
+
+      // Calculate ELO changes
+      const player1EloChange = GameService.calculateEloChange(
+        player1Stats.stats.eloRating,
+        player2Stats.stats.eloRating,
+        winner === "P1",
+        winner === "TIE"
+      );
+      const player2EloChange = GameService.calculateEloChange(
+        player2Stats.stats.eloRating,
+        player1Stats.stats.eloRating,
+        winner === "P2",
+        winner === "TIE"
+      );
+
+      // Save game record with all rounds
+      const outcome = winner === "TIE" ? "TIE" : winner === "P1" ? "P1_WIN" : "P2_WIN";
+      const winnerId = winner === "TIE" ? null : (winner === "P1" ? player1DbId : player2DbId);
+
+      await GameService.createGame(
+        player1DbId,
+        player2DbId,
+        winnerId,
+        outcome,
+        this.players.P1.balance,
+        this.players.P2.balance,
+        player1EloChange,
+        player2EloChange,
+        this.roundHistory
+      );
+
+      // Update user statistics
+      await this.updatePlayerStats(player1DbId, player1Stats.stats, winner === "P1", winner === "TIE", player1EloChange);
+      await this.updatePlayerStats(player2DbId, player2Stats.stats, winner === "P2", winner === "TIE", player2EloChange);
+
+      console.log(`[GameRoom ${this.roomId}] Game saved to database successfully`);
+    } catch (error) {
+      console.error(`[GameRoom ${this.roomId}] Error saving game to database:`, error);
+    }
+  }
+
+  private async updatePlayerStats(
+    userId: string,
+    currentStats: any,
+    won: boolean,
+    tied: boolean,
+    eloChange: number
+  ): Promise<void> {
+    const questionsAnswered = this.roundHistory.filter(r =>
+      (r.player1Answer !== null && userId === this.playerDbIds.P1) ||
+      (r.player2Answer !== null && userId === this.playerDbIds.P2)
+    ).length;
+
+    const questionsCorrect = this.roundHistory.filter(r =>
+      (r.player1Correct === true && userId === this.playerDbIds.P1) ||
+      (r.player2Correct === true && userId === this.playerDbIds.P2)
+    ).length;
+
+    const finalBalance = userId === this.playerDbIds.P1 ? this.players.P1.balance : this.players.P2.balance;
+    const winnings = finalBalance - GAME_CONFIG.startingBalance;
+
+    const newWinStreak = won ? currentStats.winStreak + 1 : 0;
+
+    await UserService.updateUserStats(userId, {
+      gamesPlayed: currentStats.gamesPlayed + 1,
+      gamesWon: won ? currentStats.gamesWon + 1 : currentStats.gamesWon,
+      gamesLost: !won && !tied ? currentStats.gamesLost + 1 : currentStats.gamesLost,
+      gamesTied: tied ? currentStats.gamesTied + 1 : currentStats.gamesTied,
+      questionsAnswered: currentStats.questionsAnswered + questionsAnswered,
+      questionsCorrect: currentStats.questionsCorrect + questionsCorrect,
+      questionsIncorrect: currentStats.questionsIncorrect + (questionsAnswered - questionsCorrect),
+      totalWinnings: currentStats.totalWinnings + winnings,
+      highestBalance: Math.max(currentStats.highestBalance, finalBalance),
+      eloRating: currentStats.eloRating + eloChange,
+      winStreak: newWinStreak,
+      bestWinStreak: Math.max(currentStats.bestWinStreak, newWinStreak),
+    });
   }
 
   // ============================================================================

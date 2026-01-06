@@ -10,6 +10,8 @@ import { ClueScreen } from "./screens/ClueScreen";
 import { AnswerScreen } from "./screens/AnswerScreen";
 import { ResolutionScreen } from "./screens/ResolutionScreen";
 import { CompleteScreen } from "./screens/CompleteScreen";
+import { ProfileScreen } from "./screens/ProfileScreen";
+import { AdminScreen } from "./screens/AdminScreen";
 
 function App() {
   const { gameState, setGameState, resetGame } = useGameState();
@@ -18,7 +20,12 @@ function App() {
     roomId,
     playerId,
     opponentConnected,
+    opponentAlias,
+    opponentElo,
     error,
+    profileData,
+    profileLoading,
+    submittingAnswer,
     handleCreateRoom,
     handleJoinRoom,
     handleBet,
@@ -28,9 +35,13 @@ function App() {
     handleBuzz,
     handleSubmitAnswer,
     handleTyping,
+    handleGetProfile,
+    handleUpdateAlias,
   } = useSocket(setGameState, resetGame);
 
   const [answerInput, setAnswerInput] = useState("");
+  const [showProfile, setShowProfile] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
 
   const deadline = gameState.answerDeadline || gameState.deadline;
   const timeRemaining = useTimer(deadline);
@@ -40,6 +51,38 @@ function App() {
     setAnswerInput("");
   };
 
+  const handleOpenProfile = () => {
+    setShowProfile(true);
+    handleGetProfile();
+  };
+
+  const handleCloseProfile = () => {
+    setShowProfile(false);
+  };
+
+  const handleOpenAdmin = () => {
+    setShowAdmin(true);
+  };
+
+  const handleCloseAdmin = () => {
+    setShowAdmin(false);
+  };
+
+  if (showAdmin) {
+    return <AdminScreen onBack={handleCloseAdmin} />;
+  }
+
+  if (showProfile) {
+    return (
+      <ProfileScreen
+        onBack={handleCloseProfile}
+        onUpdateAlias={handleUpdateAlias}
+        profileData={profileData}
+        loading={profileLoading}
+      />
+    );
+  }
+
   if (!roomId) {
     return (
       <LobbyScreen
@@ -47,6 +90,8 @@ function App() {
         error={error}
         onCreateRoom={handleCreateRoom}
         onJoinRoom={handleJoinRoom}
+        onOpenProfile={handleOpenProfile}
+        onOpenAdmin={handleOpenAdmin}
       />
     );
   }
@@ -70,6 +115,8 @@ function App() {
         pot={gameState.pot}
         category={gameState.category}
         timeRemaining={timeRemaining}
+        opponentAlias={opponentAlias}
+        opponentElo={opponentElo}
       />
     );
   }
@@ -88,6 +135,8 @@ function App() {
         currentBet={gameState.currentBet}
         foldsRemaining={gameState.foldsRemaining}
         timeRemaining={timeRemaining}
+        opponentAlias={opponentAlias}
+        opponentElo={opponentElo}
         onBet={handleBet}
         onMatch={handleMatch}
         onRaise={handleRaise}
@@ -107,6 +156,8 @@ function App() {
         clue={gameState.clue}
         revealIndex={gameState.revealIndex}
         timeRemaining={timeRemaining}
+        opponentAlias={opponentAlias}
+        opponentElo={opponentElo}
         onBuzz={handleBuzz}
       />
     );
@@ -126,9 +177,12 @@ function App() {
         answerInput={answerInput}
         opponentTyping={gameState.opponentTyping}
         timeRemaining={timeRemaining}
+        opponentAlias={opponentAlias}
+        opponentElo={opponentElo}
         onAnswerChange={setAnswerInput}
         onSubmitAnswer={handleAnswerSubmit}
         onTyping={handleTyping}
+        submittingAnswer={submittingAnswer}
       />
     );
   }
@@ -146,6 +200,8 @@ function App() {
         P2Answer={gameState.lastOutcome.P2Answer}
         balanceChanges={gameState.lastOutcome.balanceChanges}
         timeRemaining={timeRemaining}
+        opponentAlias={opponentAlias}
+        opponentElo={opponentElo}
       />
     );
   }

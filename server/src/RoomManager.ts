@@ -9,6 +9,7 @@ import {
   GAME_CONFIG,
 } from "shared";
 import { GameRoom } from "./GameRoom";
+import type { AuthenticatedSocket } from "./middleware/auth";
 
 interface PlayerConnection {
   socketId: string;
@@ -77,6 +78,8 @@ export class RoomManager {
         betTimeLimitSec: GAME_CONFIG.betTimeLimitSec,
         foldsPerPlayer: GAME_CONFIG.foldsPerPlayer,
       },
+      opponentAlias: "Waiting for opponent...",
+      opponentElo: 1200,
     };
 
     socket.emit(SocketEvents.ROOM_STATE, roomState);
@@ -120,6 +123,8 @@ export class RoomManager {
         betTimeLimitSec: GAME_CONFIG.betTimeLimitSec,
         foldsPerPlayer: GAME_CONFIG.foldsPerPlayer,
       },
+      opponentAlias: "Loading...",
+      opponentElo: 1200,
     };
 
     socket.emit(SocketEvents.ROOM_STATE, roomStateP2);
@@ -136,11 +141,61 @@ export class RoomManager {
     return { success: true, playerId: "P2" };
   }
 
-  private startGame(room: Room): void {
+  private async startGame(room: Room): Promise<void> {
     console.log(`[RoomManager] Starting game in room ${room.roomId}`);
     room.gameRoom = new GameRoom(this.io, room.roomId);
 
-    // Small delay to let the client process PLAYER_JOINED
+    // Set player database IDs and register sockets from authenticated sockets
+    for (const [playerId, connection] of room.players) {
+      const socket = this.io.sockets.sockets.get(connection.socketId) as AuthenticatedSocket;
+      if (socket?.dbUserId) {
+        await room.gameRoom.setPlayerDbId(playerId, socket.dbUserId);
+        console.log(`[RoomManager] Set ${playerId} dbUserId: ${socket.dbUserId}`);
+      }
+      // Register socket for player identity validation
+      room.gameRoom.registerSocket(connection.socketId, playerId);
+    }
+
+    // Load questions for the match from DB before starting
+    try {
+      await room.gameRoom.loadQuestions();
+      console.log(`[RoomManager] Loaded questions for room ${room.roomId}`);
+    } catch (err) {
+      console.error(`[RoomManager] Error loading questions for room ${room.roomId}:`, err);
+    }
+
+    // Send updated room state with opponent info to both players
+    for (const [playerId, connection] of room.players) {
+      const socket = this.io.sockets.sockets.get(connection.socketId);
+      if (socket) {
+        const opponentId: PlayerId = playerId === "P1" ? "P2" : "P1";
+        const opponentMetadata = room.gameRoom.getPlayerMetadata(opponentId);
+
+        const roomState: RoomStateMessage = {
+          type: "ROOM_STATE",
+          roomId: room.roomId,
+          you: playerId,
+          phase: "WAITING",
+          balances: { P1: GAME_CONFIG.startingBalance, P2: GAME_CONFIG.startingBalance },
+          foldsRemaining: { P1: GAME_CONFIG.foldsPerPlayer, P2: GAME_CONFIG.foldsPerPlayer },
+          questionIndex: 0,
+          config: {
+            revealRateCharsPerSec: GAME_CONFIG.revealRateCharsPerSec,
+            postClueTimeoutSec: GAME_CONFIG.postClueTimeoutSec,
+            answerTimeLimitSec: GAME_CONFIG.answerTimeLimitSec,
+            categoryRevealSec: GAME_CONFIG.categoryRevealSec,
+            betTimeLimitSec: GAME_CONFIG.betTimeLimitSec,
+            foldsPerPlayer: GAME_CONFIG.foldsPerPlayer,
+          },
+          opponentAlias: opponentMetadata?.alias || "Opponent",
+          opponentElo: opponentMetadata?.elo || 1200,
+        };
+
+        socket.emit(SocketEvents.ROOM_STATE, roomState);
+      }
+    }
+
+    // Small delay to let the client process room state update
     setTimeout(() => {
       room.gameRoom?.startGame();
     }, 500);
@@ -158,6 +213,10 @@ export class RoomManager {
       if (connection.socketId === socket.id) {
         disconnectedPlayer = playerId;
         room.players.delete(playerId);
+        // Unregister socket from game room
+        if (room.gameRoom) {
+          room.gameRoom.unregisterSocket(socket.id);
+        }
         break;
       }
     }

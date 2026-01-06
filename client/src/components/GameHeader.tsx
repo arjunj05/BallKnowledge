@@ -5,9 +5,11 @@ interface GameHeaderProps {
   balances: Record<PlayerId, number>;
   questionIndex: number;
   pot: number;
+  opponentAlias?: string;
+  opponentElo?: number;
 }
 
-export function GameHeader({ playerId, balances, questionIndex, pot }: GameHeaderProps) {
+export function GameHeader({ playerId, balances, questionIndex, pot, opponentAlias, opponentElo }: GameHeaderProps) {
   return (
     <div className="bg-gray-800 p-4 flex justify-between items-center">
       <div className="text-center">
@@ -15,8 +17,11 @@ export function GameHeader({ playerId, balances, questionIndex, pot }: GameHeade
           {balances.P1}
         </div>
         <div className="text-xs text-gray-400">
-          {playerId === "P1" ? "You" : "Opponent"}
+          {playerId === "P1" ? "You" : opponentAlias || "Opponent"}
         </div>
+        {playerId === "P2" && opponentElo && (
+          <div className="text-xs text-gray-500">ELO: {opponentElo}</div>
+        )}
       </div>
       <div className="text-center">
         <div className="text-sm text-gray-400">Question {questionIndex + 1}/3</div>
@@ -27,8 +32,11 @@ export function GameHeader({ playerId, balances, questionIndex, pot }: GameHeade
           {balances.P2}
         </div>
         <div className="text-xs text-gray-400">
-          {playerId === "P2" ? "You" : "Opponent"}
+          {playerId === "P2" ? "You" : opponentAlias || "Opponent"}
         </div>
+        {playerId === "P1" && opponentElo && (
+          <div className="text-xs text-gray-500">ELO: {opponentElo}</div>
+        )}
       </div>
     </div>
   );

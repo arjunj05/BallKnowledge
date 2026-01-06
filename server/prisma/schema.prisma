@@ -1,0 +1,130 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String     @id @default(uuid())
+  clerkId       String     @unique
+  email         String     @unique
+  username      String?
+  alias         String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  stats         UserStats?
+  gamesAsP1     Game[]     @relation("Player1Games")
+  gamesAsP2     Game[]     @relation("Player2Games")
+
+  @@index([clerkId])
+  @@index([email])
+}
+
+model UserStats {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  gamesPlayed     Int      @default(0)
+  gamesWon        Int      @default(0)
+  gamesLost       Int      @default(0)
+  gamesTied       Int      @default(0)
+
+  questionsAnswered        Int      @default(0)
+  questionsCorrect         Int      @default(0)
+  questionsIncorrect       Int      @default(0)
+
+  totalWinnings   Int      @default(0)
+  highestBalance  Int      @default(0)
+
+  eloRating       Int      @default(1200)
+  winStreak       Int      @default(0)
+  bestWinStreak   Int      @default(0)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([eloRating])
+}
+
+model Game {
+  id              String   @id @default(uuid())
+
+  player1Id       String
+  player1         User     @relation("Player1Games", fields: [player1Id], references: [id])
+
+  player2Id       String
+  player2         User     @relation("Player2Games", fields: [player2Id], references: [id])
+
+  winnerId        String?
+  outcome         String   // "P1_WIN", "P2_WIN", "TIE"
+
+  player1FinalBalance  Int
+  player2FinalBalance  Int
+
+  player1EloChange     Int @default(0)
+  player2EloChange     Int @default(0)
+
+  rounds          Round[]
+
+  startedAt       DateTime @default(now())
+  completedAt     DateTime @updatedAt
+
+  @@index([player1Id])
+  @@index([player2Id])
+  @@index([winnerId])
+  @@index([startedAt])
+}
+
+model Round {
+  id              String   @id @default(uuid())
+  gameId          String
+  game            Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  roundNumber     Int
+  category        String
+  clue            String
+  correctAnswer   String
+
+  potAmount       Int
+  player1Bet      Int
+  player2Bet      Int
+
+  player1Answer   String?
+  player2Answer   String?
+
+  player1Correct  Boolean?
+  player2Correct  Boolean?
+
+  winner          String?  // "P1", "P2", or null if both wrong
+
+  player1BalanceAfter  Int
+  player2BalanceAfter  Int
+
+  createdAt       DateTime @default(now())
+
+  @@index([gameId])
+}
+
+model Question {
+  id              String   @id @default(uuid())
+  category        String
+  clue            String
+  acceptedAnswers String[]
+  displayAnswer   String
+
+  createdBy       String?
+  createdAt       DateTime @default(now())
+
+  @@index([category])
+}

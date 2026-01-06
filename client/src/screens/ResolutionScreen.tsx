@@ -13,6 +13,8 @@ interface ResolutionScreenProps {
   P2Answer: string | null;
   balanceChanges: Record<PlayerId, number>;
   timeRemaining: number | null;
+  opponentAlias?: string;
+  opponentElo?: number;
 }
 
 export function ResolutionScreen({
@@ -26,6 +28,8 @@ export function ResolutionScreen({
   P2Answer,
   balanceChanges,
   timeRemaining,
+  opponentAlias,
+  opponentElo,
 }: ResolutionScreenProps) {
   const isWinner =
     (outcome === "P1_WIN" && playerId === "P1") ||
@@ -37,7 +41,7 @@ export function ResolutionScreen({
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-      <GameHeader playerId={playerId} balances={balances} questionIndex={questionIndex} pot={pot} />
+      <GameHeader playerId={playerId} balances={balances} questionIndex={questionIndex} pot={pot} opponentAlias={opponentAlias} opponentElo={opponentElo} />
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         <div className="bg-gray-800 rounded-xl p-8 w-full max-w-md text-center">
           <div

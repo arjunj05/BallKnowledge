@@ -9,6 +9,8 @@ interface CategoryScreenProps {
   pot: number;
   category: string;
   timeRemaining: number | null;
+  opponentAlias?: string;
+  opponentElo?: number;
 }
 
 export function CategoryScreen({
@@ -18,10 +20,12 @@ export function CategoryScreen({
   pot,
   category,
   timeRemaining,
+  opponentAlias,
+  opponentElo,
 }: CategoryScreenProps) {
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-      <GameHeader playerId={playerId} balances={balances} questionIndex={questionIndex} pot={pot} />
+      <GameHeader playerId={playerId} balances={balances} questionIndex={questionIndex} pot={pot} opponentAlias={opponentAlias} opponentElo={opponentElo} />
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         <p className="text-gray-400 mb-2">Question {questionIndex + 1} of 3</p>
         <div className="text-4xl font-bold mb-8 text-center px-4 py-6 bg-gray-800 rounded-xl">

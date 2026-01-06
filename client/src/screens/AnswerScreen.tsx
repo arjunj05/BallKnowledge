@@ -16,9 +16,12 @@ interface AnswerScreenProps {
   answerInput: string;
   opponentTyping: string | null;
   timeRemaining: number | null;
+  opponentAlias?: string;
+  opponentElo?: number;
   onAnswerChange: (value: string) => void;
   onSubmitAnswer: () => void;
   onTyping: (text: string) => void;
+  submittingAnswer: boolean;
 }
 
 export function AnswerScreen({
@@ -33,9 +36,12 @@ export function AnswerScreen({
   answerInput,
   opponentTyping,
   timeRemaining,
+  opponentAlias,
+  opponentElo,
   onAnswerChange,
   onSubmitAnswer,
   onTyping,
+  submittingAnswer,
 }: AnswerScreenProps) {
   const answerInputRef = useRef<HTMLInputElement>(null);
   const isMyTurn = currentlyAnswering === playerId;
@@ -60,7 +66,7 @@ export function AnswerScreen({
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-      <GameHeader playerId={playerId} balances={balances} questionIndex={questionIndex} pot={pot} />
+      <GameHeader playerId={playerId} balances={balances} questionIndex={questionIndex} pot={pot} opponentAlias={opponentAlias} opponentElo={opponentElo} />
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         <div className="bg-gray-800 rounded-xl p-6 w-full max-w-2xl">
           <p className="text-sm text-gray-400 mb-2 text-center">{category}</p>
@@ -82,10 +88,10 @@ export function AnswerScreen({
               />
               <button
                 onClick={onSubmitAnswer}
-                disabled={!answerInput.trim()}
+                disabled={!answerInput.trim() || submittingAnswer}
                 className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 py-3 rounded-lg font-bold transition-colors"
               >
-                Submit Answer
+                {submittingAnswer ? "Submitting..." : "Submit Answer"}
               </button>
             </div>
           ) : (

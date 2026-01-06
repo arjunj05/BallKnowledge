@@ -104,6 +104,8 @@ export interface RoomStateMessage {
   foldsRemaining: Record<PlayerId, number>;
   questionIndex: number;
   config: RoomConfig;
+  opponentAlias: string;
+  opponentElo: number;
 }
 
 export interface PlayerJoinedMessage {
@@ -302,6 +304,8 @@ export const SocketEvents = {
   BUZZ: "buzz",
   ANSWER: "answer",
   ANSWER_TYPING: "answer_typing",
+  GET_PROFILE: "get_profile",
+  UPDATE_ALIAS: "update_alias",
 
   // Server -> Client
   ROOM_STATE: "room_state",
@@ -319,6 +323,8 @@ export const SocketEvents = {
   ANSWER_SUBMITTED: "answer_submitted",
   CLUE_RESUMED: "clue_resumed",
   ERROR: "error",
+  PROFILE_DATA: "profile_data",
+  ALIAS_UPDATED: "alias_updated",
 } as const;
 
 // ============================================================================
@@ -334,4 +340,34 @@ export interface JoinRoomResponse {
   success: boolean;
   playerId?: PlayerId;
   error?: string;
+}
+
+export interface ProfileData {
+  alias: string;
+  email: string;
+  username: string | null;
+  createdAt: string;
+  stats: {
+    eloRating: number;
+    gamesPlayed: number;
+    gamesWon: number;
+    gamesLost: number;
+    gamesTied: number;
+    questionsAnswered: number;
+    questionsCorrect: number;
+    questionsIncorrect: number;
+    totalWinnings: number;
+    highestBalance: number;
+    winStreak: number;
+    bestWinStreak: number;
+  };
+  recentGames: Array<{
+    id: string;
+    opponentName: string;
+    result: "WIN" | "LOSS" | "TIE";
+    yourBalance: number;
+    opponentBalance: number;
+    eloChange: number;
+    playedAt: string;
+  }>;
 }

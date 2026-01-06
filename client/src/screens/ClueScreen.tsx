@@ -11,6 +11,8 @@ interface ClueScreenProps {
   clue: string;
   revealIndex: number;
   timeRemaining: number | null;
+  opponentAlias?: string;
+  opponentElo?: number;
   onBuzz: () => void;
 }
 
@@ -23,6 +25,8 @@ export function ClueScreen({
   clue,
   revealIndex,
   timeRemaining,
+  opponentAlias,
+  opponentElo,
   onBuzz,
 }: ClueScreenProps) {
   const revealedClue = clue.substring(0, revealIndex);
@@ -30,7 +34,7 @@ export function ClueScreen({
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-      <GameHeader playerId={playerId} balances={balances} questionIndex={questionIndex} pot={pot} />
+      <GameHeader playerId={playerId} balances={balances} questionIndex={questionIndex} pot={pot} opponentAlias={opponentAlias} opponentElo={opponentElo} />
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         <div className="bg-gray-800 rounded-xl p-6 w-full max-w-2xl">
           <p className="text-sm text-gray-400 mb-2 text-center">{category}</p>

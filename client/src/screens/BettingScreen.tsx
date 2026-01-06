@@ -14,6 +14,8 @@ interface BettingScreenProps {
   currentBet: number | null;
   foldsRemaining: Record<PlayerId, number>;
   timeRemaining: number | null;
+  opponentAlias?: string;
+  opponentElo?: number;
   onBet: (amount: number) => void;
   onMatch: () => void;
   onRaise: (amount: number) => void;
@@ -32,6 +34,8 @@ export function BettingScreen({
   currentBet,
   foldsRemaining,
   timeRemaining,
+  opponentAlias,
+  opponentElo,
   onBet,
   onMatch,
   onRaise,
@@ -45,7 +49,7 @@ export function BettingScreen({
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-      <GameHeader playerId={playerId} balances={balances} questionIndex={questionIndex} pot={pot} />
+      <GameHeader playerId={playerId} balances={balances} questionIndex={questionIndex} pot={pot} opponentAlias={opponentAlias} opponentElo={opponentElo} />
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md">
           <div className="text-center mb-6">
