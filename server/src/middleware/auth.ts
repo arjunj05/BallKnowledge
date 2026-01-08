@@ -1,6 +1,6 @@
 import { createClerkClient, verifyToken } from "@clerk/clerk-sdk-node";
 import type { Socket } from "socket.io";
-import { UserService } from "../services/UserService";
+import { UserService } from "../services/UserService.js";
 
 const clerkClient = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY,

@@ -3,7 +3,7 @@
  * Handles question CRUD operations and system management
  */
 
-import prisma from "../db/prisma";
+import prisma from "../db/prisma.js";
 
 export interface QuestionInput {
   id: string;

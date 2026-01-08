@@ -5,13 +5,13 @@
  */
 
 import { Router, Request, Response } from "express";
-import { AdminService } from "../services/AdminService";
+import { AdminService } from "../services/AdminService.js";
 import {
   CreateQuestionSchema,
   UpdateQuestionSchema,
   PaginationSchema,
   validateAdminPayload,
-} from "../validation/adminSchemas";
+} from "../validation/adminSchemas.js";
 
 const router = Router();
 

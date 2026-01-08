@@ -1,4 +1,4 @@
-import prisma from "../db/prisma";
+import prisma from "../db/prisma.js";
 import { Question } from "shared";
 
 interface RoundData {

@@ -23,8 +23,8 @@ import {
   ResolutionOutcome,
   BetAction,
 } from "shared";
-import { GameService } from "./services/GameService";
-import { UserService } from "./services/UserService";
+import { GameService } from "./services/GameService.js";
+import { UserService } from "./services/UserService.js";
 
 interface PlayerState {
   balance: number;

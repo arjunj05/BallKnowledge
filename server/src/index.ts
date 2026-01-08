@@ -4,11 +4,11 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 import { SocketEvents, type ProfileData } from "shared";
-import { RoomManager } from "./RoomManager";
-import { authenticateSocket, type AuthenticatedSocket } from "./middleware/auth";
-import { requireAdmin } from "./middleware/adminAuth";
-import { UserService } from "./services/UserService";
-import { rateLimiter, RATE_LIMITS } from "./middleware/rateLimiter";
+import { RoomManager } from "./RoomManager.js";
+import { authenticateSocket, type AuthenticatedSocket } from "./middleware/auth.js";
+import { requireAdmin } from "./middleware/adminAuth.js";
+import { UserService } from "./services/UserService.js";
+import { rateLimiter, RATE_LIMITS } from "./middleware/rateLimiter.js";
 import {
   validatePayload,
   BetSchema,
@@ -17,8 +17,8 @@ import {
   AnswerTypingSchema,
   JoinRoomSchema,
   UpdateAliasSchema,
-} from "./validation/socketSchemas";
-import adminRouter from "./routes/admin";
+} from "./validation/socketSchemas.js";
+import adminRouter from "./routes/admin.js";
 
 const app = express();
 

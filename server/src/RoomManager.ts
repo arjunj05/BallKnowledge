@@ -8,8 +8,8 @@ import {
   PlayerJoinedMessage,
   GAME_CONFIG,
 } from "shared";
-import { GameRoom } from "./GameRoom";
-import type { AuthenticatedSocket } from "./middleware/auth";
+import { GameRoom } from "./GameRoom.js";
+import type { AuthenticatedSocket } from "./middleware/auth.js";
 
 interface PlayerConnection {
   socketId: string;

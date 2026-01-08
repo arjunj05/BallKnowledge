@@ -4,8 +4,8 @@
  */
 
 import dotenv from "dotenv";
-import prisma from "../db/prisma";
-import questions from "../data/questions.json";
+import prisma from "../db/prisma.js";
+import questions from "../data/questions.json" with { type: "json" };
 
 // Load environment variables from .env file
 dotenv.config();
