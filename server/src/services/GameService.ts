@@ -138,7 +138,7 @@ export class GameService {
     const rows = await prisma.question.findMany();
     // Simple shuffle and slice for now
     const shuffled = rows.sort(() => Math.random() - 0.5).slice(0, count);
-    return shuffled.map((r) => ({
+    return shuffled.map((r: any) => ({
       id: r.id,
       category: r.category,
       clue: r.clue,

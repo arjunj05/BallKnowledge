@@ -142,12 +142,12 @@ export class UserService {
 
     // Combine and sort games by date
     const allGames = [
-      ...user.gamesAsP1.map((game) => ({
+      ...user.gamesAsP1.map((game: any) => ({
         ...game,
         isP1: true,
         opponent: game.player2,
       })),
-      ...user.gamesAsP2.map((game) => ({
+      ...user.gamesAsP2.map((game: any) => ({
         ...game,
         isP1: false,
         opponent: game.player1,
