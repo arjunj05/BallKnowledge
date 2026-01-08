@@ -30,15 +30,21 @@ export async function authenticateSocket(
     const payload = await verifyToken(token, {
       secretKey: process.env.CLERK_SECRET_KEY!,
       issuer: (iss) => {
+        console.log(`[Auth] Token issuer: "${iss}"`);
+        console.log(`[Auth] CLERK_FRONTEND_API env: "${process.env.CLERK_FRONTEND_API}"`);
+
         // Accept Clerk's default domains (development)
         if (iss.startsWith("https://") && iss.includes(".clerk.accounts.dev")) {
+          console.log(`[Auth] ✓ Accepted via .clerk.accounts.dev`);
           return true;
         }
         // Accept custom domain from environment variable (production)
         const customDomain = process.env.CLERK_FRONTEND_API;
         if (customDomain && iss === customDomain) {
+          console.log(`[Auth] ✓ Accepted via CLERK_FRONTEND_API match`);
           return true;
         }
+        console.log(`[Auth] ✗ Rejected - issuer doesn't match any allowed pattern`);
         return false;
       },
     });
