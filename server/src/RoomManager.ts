@@ -129,11 +129,19 @@ export class RoomManager {
 
     socket.emit(SocketEvents.ROOM_STATE, roomStateP2);
 
-    const playerJoined: PlayerJoinedMessage = {
+    // Notify P1 that P2 joined
+    const playerJoinedForP1: PlayerJoinedMessage = {
       type: "PLAYER_JOINED",
       player: "P2",
     };
-    socket.to(room.roomId).emit(SocketEvents.PLAYER_JOINED, playerJoined);
+    socket.to(room.roomId).emit(SocketEvents.PLAYER_JOINED, playerJoinedForP1);
+
+    // Notify P2 that P1 is already connected (so countdown shows for both)
+    const playerJoinedForP2: PlayerJoinedMessage = {
+      type: "PLAYER_JOINED",
+      player: "P1",
+    };
+    socket.emit(SocketEvents.PLAYER_JOINED, playerJoinedForP2);
 
     // Both players are now connected - start the game
     this.startGame(room);

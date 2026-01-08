@@ -70,13 +70,15 @@ export class GameRoom {
   // Socket tracking for player identity validation
   private socketPlayerMap: Map<string, PlayerId> = new Map();
 
-  private bettingState: BettingState = {
+  private bettingState: BettingState & { sidePot: number; allInPlayer: PlayerId | null } = {
     firstActor: "P1",
     bets: { P1: null, P2: null },
     contributions: { P1: 0, P2: 0 },
     raises: 0,
     awaitingAction: null,
     pot: 0,
+    sidePot: 0,
+    allInPlayer: null,
   };
 
   private clueState: ClueState = {
@@ -249,6 +251,8 @@ export class GameRoom {
       raises: 0,
       awaitingAction: this.questionIndex % 2 === 0 ? "P1" : "P2",
       pot: 0,
+      sidePot: 0,
+      allInPlayer: null,
     };
 
     this.sendBettingState();
@@ -259,9 +263,13 @@ export class GameRoom {
     if (!player) return;
 
     const availableActions = this.getAvailableActions(player);
-    const betOptions = GAME_CONFIG.betTiers.filter(
-      (tier) => tier <= this.players[player].balance
-    );
+    const playerBalance = this.players[player].balance;
+
+    // Include bet tiers that player can afford, plus their exact balance if it's not already in the tiers
+    const affordableTiers = GAME_CONFIG.betTiers.filter((tier) => tier <= playerBalance);
+    const betOptions: number[] = affordableTiers.includes(playerBalance as any)
+      ? [...affordableTiers]
+      : [...affordableTiers, playerBalance].sort((a, b) => a - b);
 
     const currentBet = this.bettingState.bets[this.getOtherPlayer(player)];
     const deadline = Date.now() + GAME_CONFIG.betTimeLimitSec * 1000;
@@ -275,6 +283,7 @@ export class GameRoom {
       currentBet,
       pot: this.bettingState.pot,
       deadline,
+      playerContribution: this.bettingState.contributions[player],
     };
 
     this.emit(SocketEvents.PHASE_BETTING, message);
@@ -334,7 +343,8 @@ export class GameRoom {
     }
 
     if (amount > this.players[player].balance) return;
-    if (!GAME_CONFIG.betTiers.includes(amount as typeof GAME_CONFIG.betTiers[number])) return;
+    // Allow any amount up to player's balance (includes all-in)
+    if (amount <= 0) return;
 
     this.clearTimer("betting");
 
@@ -343,6 +353,11 @@ export class GameRoom {
     this.players[player].balance -= amount;
     this.bettingState.pot = amount;
     this.bettingState.awaitingAction = this.getOtherPlayer(player);
+
+    // Track if player went all-in
+    if (this.players[player].balance === 0) {
+      this.bettingState.allInPlayer = player;
+    }
 
     this.broadcastBetPlaced(player, "BET", amount);
     this.sendBettingState();
@@ -364,16 +379,35 @@ export class GameRoom {
     const otherPlayer = this.getOtherPlayer(player);
     const amountToMatch = this.bettingState.contributions[otherPlayer] - this.bettingState.contributions[player];
 
-    if (amountToMatch <= 0 || amountToMatch > this.players[player].balance) return;
+    if (amountToMatch <= 0) return;
 
     this.clearTimer("betting");
 
-    this.bettingState.contributions[player] += amountToMatch;
-    this.players[player].balance -= amountToMatch;
-    this.bettingState.pot += amountToMatch;
-    this.bettingState.awaitingAction = null;
+    const playerBalance = this.players[player].balance;
 
-    this.broadcastBetPlaced(player, "MATCH", amountToMatch);
+    // Check if player can afford full match
+    if (playerBalance >= amountToMatch) {
+      // Full match
+      this.bettingState.contributions[player] += amountToMatch;
+      this.players[player].balance -= amountToMatch;
+      this.bettingState.pot += amountToMatch;
+      this.broadcastBetPlaced(player, "MATCH", amountToMatch);
+    } else {
+      // Partial match (all-in) - create side pot
+      const allInAmount = playerBalance;
+      this.bettingState.contributions[player] += allInAmount;
+      this.players[player].balance = 0;
+      this.bettingState.pot += allInAmount;
+
+      // Calculate side pot (opponent's unmatched amount)
+      const unmatchedAmount = amountToMatch - allInAmount;
+      this.bettingState.sidePot = unmatchedAmount;
+      this.bettingState.allInPlayer = player;
+
+      this.broadcastBetPlaced(player, "MATCH", allInAmount);
+    }
+
+    this.bettingState.awaitingAction = null;
     this.startCluePhase();
   }
 
@@ -406,6 +440,11 @@ export class GameRoom {
     this.bettingState.pot += contribution;
     this.bettingState.raises++;
     this.bettingState.awaitingAction = otherPlayer;
+
+    // Track if player went all-in
+    if (this.players[player].balance === 0) {
+      this.bettingState.allInPlayer = player;
+    }
 
     this.broadcastBetPlaced(player, "RAISE", amount);
     this.sendBettingState();
@@ -478,6 +517,9 @@ export class GameRoom {
       deadline: this.bettingState.awaitingAction
         ? Date.now() + GAME_CONFIG.betTimeLimitSec * 1000
         : null,
+      playerContribution: this.bettingState.awaitingAction
+        ? this.bettingState.contributions[this.bettingState.awaitingAction]
+        : 0,
     };
 
     this.emit(SocketEvents.BET_PLACED, message);
@@ -683,8 +725,22 @@ export class GameRoom {
   }
 
   private handleCorrectAnswer(player: PlayerId): void {
-    // Winner takes the pot
+    // Winner takes the main pot
     this.players[player].balance += this.bettingState.pot;
+
+    // Handle side pot - if winner is all-in player, opponent gets side pot back
+    // If winner is NOT all-in player, they get everything
+    if (this.bettingState.sidePot > 0) {
+      const otherPlayer = this.getOtherPlayer(player);
+      if (this.bettingState.allInPlayer === player) {
+        // All-in player won, opponent gets side pot back
+        this.players[otherPlayer].balance += this.bettingState.sidePot;
+      } else {
+        // Non-all-in player won, they get side pot too
+        this.players[player].balance += this.bettingState.sidePot;
+      }
+    }
+
     this.goToResolution(player === "P1" ? "P1_WIN" : "P2_WIN");
   }
 
@@ -735,6 +791,13 @@ export class GameRoom {
     // Return contributions to each player
     this.players.P1.balance += this.bettingState.contributions.P1;
     this.players.P2.balance += this.bettingState.contributions.P2;
+
+    // Return side pot to the player who created it (the one who wasn't all-in)
+    if (this.bettingState.sidePot > 0 && this.bettingState.allInPlayer) {
+      const nonAllInPlayer = this.getOtherPlayer(this.bettingState.allInPlayer);
+      this.players[nonAllInPlayer].balance += this.bettingState.sidePot;
+    }
+
     this.goToResolution("DRAW");
   }
 
@@ -808,7 +871,12 @@ export class GameRoom {
   private advanceToNextQuestion(): void {
     this.questionIndex++;
 
-    if (this.questionIndex >= GAME_CONFIG.questionsPerMatch) {
+    // End game if we've completed all questions OR if either player has 0 balance
+    if (
+      this.questionIndex >= GAME_CONFIG.questionsPerMatch ||
+      this.players.P1.balance === 0 ||
+      this.players.P2.balance === 0
+    ) {
       this.endGame();
     } else {
       this.startCategoryPhase();

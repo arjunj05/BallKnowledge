@@ -134,6 +134,7 @@ export interface PhaseBettingMessage {
   currentBet: number | null;
   pot: number;
   deadline: number;
+  playerContribution: number;
 }
 
 export interface PhaseClueMessage {
@@ -170,6 +171,7 @@ export interface BetPlacedMessage {
   availableActions: BetAction[];
   currentBet: number | null;
   deadline: number | null;
+  playerContribution: number;
 }
 
 export interface ClueTickMessage {

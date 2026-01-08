@@ -12,6 +12,7 @@ interface BettingScreenProps {
   availableActions: BetAction[];
   betOptions: number[];
   currentBet: number | null;
+  playerContribution: number;
   foldsRemaining: Record<PlayerId, number>;
   timeRemaining: number | null;
   opponentAlias?: string;
@@ -32,6 +33,7 @@ export function BettingScreen({
   availableActions,
   betOptions,
   currentBet,
+  playerContribution,
   foldsRemaining,
   timeRemaining,
   opponentAlias,
@@ -58,7 +60,7 @@ export function BettingScreen({
               <p className="text-xl font-bold text-green-400">Your turn to bet!</p>
             ) : (
               <p className="text-xl text-gray-300">
-                Waiting for {awaitingAction === "P1" ? (playerId === "P1" ? "you" : "opponent") : (playerId === "P2" ? "you" : "opponent")}...
+                Waiting for {awaitingAction === "P1" ? (playerId === "P1" ? "you" : opponentAlias || "opponent") : (playerId === "P2" ? "you" : opponentAlias || "opponent")}...
               </p>
             )}
             {currentBet && (
@@ -72,15 +74,24 @@ export function BettingScreen({
                 <div>
                   <p className="text-sm text-gray-400 mb-2">Place your bet:</p>
                   <div className="grid grid-cols-5 gap-2">
-                    {betOptions.map((amount) => (
-                      <button
-                        key={amount}
-                        onClick={() => onBet(amount)}
-                        className="bg-blue-600 hover:bg-blue-700 py-2 rounded-lg font-bold transition-colors"
-                      >
-                        {amount}
-                      </button>
-                    ))}
+                    {betOptions.map((amount) => {
+                      const playerBalance = playerId ? balances[playerId] : 0;
+                      const isAllIn = amount === playerBalance;
+                      return (
+                        <button
+                          key={amount}
+                          onClick={() => onBet(amount)}
+                          className={`py-2 rounded-lg font-bold transition-colors ${
+                            isAllIn
+                              ? "bg-purple-600 hover:bg-purple-700 ring-2 ring-purple-400"
+                              : "bg-blue-600 hover:bg-blue-700"
+                          }`}
+                        >
+                          <div className="text-xs">{amount}</div>
+                          {isAllIn && <div className="text-[10px]">ALL-IN</div>}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -90,7 +101,14 @@ export function BettingScreen({
                   onClick={onMatch}
                   className="w-full bg-green-600 hover:bg-green-700 py-3 rounded-lg font-bold transition-colors"
                 >
-                  Match ({currentBet})
+                  {(() => {
+                    const amountToMatch = currentBet - playerContribution;
+                    const playerBalance = playerId ? balances[playerId] : 0;
+                    const canAffordFullMatch = playerBalance >= amountToMatch;
+                    return canAffordFullMatch
+                      ? `Match (${amountToMatch})`
+                      : `All-In Match (${playerBalance})`;
+                  })()}
                 </button>
               )}
 
@@ -100,15 +118,24 @@ export function BettingScreen({
                   <div className="grid grid-cols-5 gap-2">
                     {betOptions
                       .filter((a) => a > (currentBet || 0))
-                      .map((amount) => (
-                        <button
-                          key={amount}
-                          onClick={() => onRaise(amount)}
-                          className="bg-yellow-600 hover:bg-yellow-700 py-2 rounded-lg font-bold transition-colors"
-                        >
-                          {amount}
-                        </button>
-                      ))}
+                      .map((amount) => {
+                        const playerBalance = playerId ? balances[playerId] : 0;
+                        const isAllIn = amount === playerBalance;
+                        return (
+                          <button
+                            key={amount}
+                            onClick={() => onRaise(amount)}
+                            className={`py-2 rounded-lg font-bold transition-colors ${
+                              isAllIn
+                                ? "bg-purple-600 hover:bg-purple-700 ring-2 ring-purple-400"
+                                : "bg-yellow-600 hover:bg-yellow-700"
+                            }`}
+                          >
+                            <div className="text-xs">{amount}</div>
+                            {isAllIn && <div className="text-[10px]">ALL-IN</div>}
+                          </button>
+                        );
+                      })}
                   </div>
                 </div>
               )}

@@ -57,7 +57,7 @@ export function ResolutionScreen({
 
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="bg-gray-700 rounded-lg p-4">
-              <div className="text-sm text-gray-400">{playerId === "P1" ? "You" : "Opponent"}</div>
+              <div className="text-sm text-gray-400">{playerId === "P1" ? "You" : opponentAlias || "Opponent"}</div>
               <div className="text-lg">{P1Answer || "(no answer)"}</div>
               <div
                 className={`text-lg font-bold ${
@@ -73,7 +73,7 @@ export function ResolutionScreen({
               </div>
             </div>
             <div className="bg-gray-700 rounded-lg p-4">
-              <div className="text-sm text-gray-400">{playerId === "P2" ? "You" : "Opponent"}</div>
+              <div className="text-sm text-gray-400">{playerId === "P2" ? "You" : opponentAlias || "Opponent"}</div>
               <div className="text-lg">{P2Answer || "(no answer)"}</div>
               <div
                 className={`text-lg font-bold ${

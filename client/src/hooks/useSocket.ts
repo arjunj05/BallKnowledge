@@ -42,7 +42,9 @@ interface UseSocketReturn {
   profileData: ProfileData | null;
   profileLoading: boolean;
   submittingAnswer: boolean;
+  notification: string | null;
   setError: (error: string | null) => void;
+  clearNotification: () => void;
   handleCreateRoom: () => void;
   handleJoinRoom: (joinRoomId: string) => void;
   handleBet: (amount: number) => void;
@@ -71,6 +73,11 @@ export function useSocket(
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [submittingAnswer, setSubmittingAnswer] = useState(false);
+  const [notification, setNotification] = useState<string | null>(null);
+
+  const clearNotification = useCallback(() => {
+    setNotification(null);
+  }, []);
 
   useEffect(() => {
     if (!isSignedIn) {
@@ -157,11 +164,31 @@ export function useSocket(
         currentBet: data.currentBet,
         pot: data.pot,
         deadline: data.deadline,
+        playerContribution: data.playerContribution,
       }));
     });
 
     socket.on(SocketEvents.BET_PLACED, (data: BetPlacedMessage) => {
       console.log("[Socket] Bet placed:", data);
+
+      // Show notification if opponent made the action
+      if (data.player !== playerId) {
+        const opponentName = opponentAlias || "Opponent";
+        let actionText = "";
+
+        if (data.action === "BET") {
+          actionText = `bet ${data.amount}`;
+        } else if (data.action === "MATCH") {
+          actionText = `matched for ${data.amount}`;
+        } else if (data.action === "RAISE") {
+          actionText = `raised to ${data.amount}`;
+        } else if (data.action === "FOLD") {
+          actionText = "folded";
+        }
+
+        setNotification(`${opponentName} ${actionText}! Pot: ${data.pot}`);
+      }
+
       setGameState((prev) => ({
         ...prev,
         pot: data.pot,
@@ -169,6 +196,7 @@ export function useSocket(
         availableActions: data.availableActions,
         currentBet: data.currentBet,
         deadline: data.deadline,
+        playerContribution: data.playerContribution,
       }));
     });
 
@@ -409,7 +437,9 @@ export function useSocket(
     profileData,
     profileLoading,
     submittingAnswer,
+    notification,
     setError,
+    clearNotification,
     handleCreateRoom,
     handleJoinRoom,
     handleBet,

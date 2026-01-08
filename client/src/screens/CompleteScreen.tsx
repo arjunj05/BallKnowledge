@@ -5,9 +5,10 @@ interface CompleteScreenProps {
   winner: "P1" | "P2" | "TIE" | null;
   balances: Record<PlayerId, number>;
   finalBalances: Record<PlayerId, number> | null;
+  opponentAlias?: string;
 }
 
-export function CompleteScreen({ playerId, winner, balances, finalBalances }: CompleteScreenProps) {
+export function CompleteScreen({ playerId, winner, balances, finalBalances, opponentAlias }: CompleteScreenProps) {
   const isWinner =
     (winner === "P1" && playerId === "P1") ||
     (winner === "P2" && playerId === "P2");
@@ -33,7 +34,7 @@ export function CompleteScreen({ playerId, winner, balances, finalBalances }: Co
             }`}
           >
             <div className="text-sm text-gray-400 mb-2">
-              {playerId === "P1" ? "You" : "Opponent"}
+              {playerId === "P1" ? "You" : opponentAlias || "Opponent"}
             </div>
             <div className="text-4xl font-bold">
               {finalBalances?.P1 || balances.P1}
@@ -45,7 +46,7 @@ export function CompleteScreen({ playerId, winner, balances, finalBalances }: Co
             }`}
           >
             <div className="text-sm text-gray-400 mb-2">
-              {playerId === "P2" ? "You" : "Opponent"}
+              {playerId === "P2" ? "You" : opponentAlias || "Opponent"}
             </div>
             <div className="text-4xl font-bold">
               {finalBalances?.P2 || balances.P2}

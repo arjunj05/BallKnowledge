@@ -16,6 +16,7 @@ export interface GameState {
   availableActions: BetAction[];
   betOptions: number[];
   currentBet: number | null;
+  playerContribution: number;
   deadline: number | null;
   currentlyAnswering: PlayerId | null;
   answerDeadline: number | null;
@@ -44,6 +45,7 @@ const initialGameState: GameState = {
   availableActions: [],
   betOptions: [],
   currentBet: null,
+  playerContribution: 0,
   deadline: null,
   currentlyAnswering: null,
   answerDeadline: null,

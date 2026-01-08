@@ -12,6 +12,7 @@ import { ResolutionScreen } from "./screens/ResolutionScreen";
 import { CompleteScreen } from "./screens/CompleteScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { AdminScreen } from "./screens/AdminScreen";
+import { Notification } from "./components/Notification";
 
 function App() {
   const { gameState, setGameState, resetGame } = useGameState();
@@ -26,6 +27,8 @@ function App() {
     profileData,
     profileLoading,
     submittingAnswer,
+    notification,
+    clearNotification,
     handleCreateRoom,
     handleJoinRoom,
     handleBet,
@@ -98,126 +101,171 @@ function App() {
 
   if (gameState.phase === "WAITING") {
     return (
-      <WaitingScreen
-        roomId={roomId}
-        playerId={playerId}
-        opponentConnected={opponentConnected}
-      />
+      <>
+        <WaitingScreen
+          roomId={roomId}
+          playerId={playerId}
+          opponentConnected={opponentConnected}
+          opponentAlias={opponentAlias}
+          playerAlias={profileData?.alias}
+        />
+        {notification && (
+          <Notification message={notification} onDismiss={clearNotification} />
+        )}
+      </>
     );
   }
 
   if (gameState.phase === "CATEGORY") {
     return (
-      <CategoryScreen
-        playerId={playerId}
-        balances={gameState.balances}
-        questionIndex={gameState.questionIndex}
-        pot={gameState.pot}
-        category={gameState.category}
-        timeRemaining={timeRemaining}
-        opponentAlias={opponentAlias}
-        opponentElo={opponentElo}
-      />
+      <>
+        <CategoryScreen
+          playerId={playerId}
+          balances={gameState.balances}
+          questionIndex={gameState.questionIndex}
+          pot={gameState.pot}
+          category={gameState.category}
+          timeRemaining={timeRemaining}
+          opponentAlias={opponentAlias}
+          opponentElo={opponentElo}
+        />
+        {notification && (
+          <Notification message={notification} onDismiss={clearNotification} />
+        )}
+      </>
     );
   }
 
   if (gameState.phase === "BETTING") {
     return (
-      <BettingScreen
-        playerId={playerId}
-        balances={gameState.balances}
-        questionIndex={gameState.questionIndex}
-        pot={gameState.pot}
-        category={gameState.category}
-        awaitingAction={gameState.awaitingAction}
-        availableActions={gameState.availableActions}
-        betOptions={gameState.betOptions}
-        currentBet={gameState.currentBet}
-        foldsRemaining={gameState.foldsRemaining}
-        timeRemaining={timeRemaining}
-        opponentAlias={opponentAlias}
-        opponentElo={opponentElo}
-        onBet={handleBet}
-        onMatch={handleMatch}
-        onRaise={handleRaise}
-        onFold={handleFold}
-      />
+      <>
+        <BettingScreen
+          playerId={playerId}
+          balances={gameState.balances}
+          questionIndex={gameState.questionIndex}
+          pot={gameState.pot}
+          category={gameState.category}
+          awaitingAction={gameState.awaitingAction}
+          availableActions={gameState.availableActions}
+          betOptions={gameState.betOptions}
+          currentBet={gameState.currentBet}
+          playerContribution={gameState.playerContribution}
+          foldsRemaining={gameState.foldsRemaining}
+          timeRemaining={timeRemaining}
+          opponentAlias={opponentAlias}
+          opponentElo={opponentElo}
+          onBet={handleBet}
+          onMatch={handleMatch}
+          onRaise={handleRaise}
+          onFold={handleFold}
+        />
+        {notification && (
+          <Notification message={notification} onDismiss={clearNotification} />
+        )}
+      </>
     );
   }
 
   if (gameState.phase === "CLUE") {
     return (
-      <ClueScreen
-        playerId={playerId}
-        balances={gameState.balances}
-        questionIndex={gameState.questionIndex}
-        pot={gameState.pot}
-        category={gameState.category}
-        clue={gameState.clue}
-        revealIndex={gameState.revealIndex}
-        timeRemaining={timeRemaining}
-        opponentAlias={opponentAlias}
-        opponentElo={opponentElo}
-        onBuzz={handleBuzz}
-      />
+      <>
+        <ClueScreen
+          playerId={playerId}
+          balances={gameState.balances}
+          questionIndex={gameState.questionIndex}
+          pot={gameState.pot}
+          category={gameState.category}
+          clue={gameState.clue}
+          revealIndex={gameState.revealIndex}
+          timeRemaining={timeRemaining}
+          opponentAlias={opponentAlias}
+          opponentElo={opponentElo}
+          onBuzz={handleBuzz}
+        />
+        {notification && (
+          <Notification message={notification} onDismiss={clearNotification} />
+        )}
+      </>
     );
   }
 
   if (gameState.phase === "ANSWER") {
     return (
-      <AnswerScreen
-        playerId={playerId}
-        balances={gameState.balances}
-        questionIndex={gameState.questionIndex}
-        pot={gameState.pot}
-        category={gameState.category}
-        clue={gameState.clue}
-        revealIndex={gameState.revealIndex}
-        currentlyAnswering={gameState.currentlyAnswering}
-        answerInput={answerInput}
-        opponentTyping={gameState.opponentTyping}
-        timeRemaining={timeRemaining}
-        opponentAlias={opponentAlias}
-        opponentElo={opponentElo}
-        onAnswerChange={setAnswerInput}
-        onSubmitAnswer={handleAnswerSubmit}
-        onTyping={handleTyping}
-        submittingAnswer={submittingAnswer}
-      />
+      <>
+        <AnswerScreen
+          playerId={playerId}
+          balances={gameState.balances}
+          questionIndex={gameState.questionIndex}
+          pot={gameState.pot}
+          category={gameState.category}
+          clue={gameState.clue}
+          revealIndex={gameState.revealIndex}
+          currentlyAnswering={gameState.currentlyAnswering}
+          answerInput={answerInput}
+          opponentTyping={gameState.opponentTyping}
+          timeRemaining={timeRemaining}
+          opponentAlias={opponentAlias}
+          opponentElo={opponentElo}
+          onAnswerChange={setAnswerInput}
+          onSubmitAnswer={handleAnswerSubmit}
+          onTyping={handleTyping}
+          submittingAnswer={submittingAnswer}
+        />
+        {notification && (
+          <Notification message={notification} onDismiss={clearNotification} />
+        )}
+      </>
     );
   }
 
   if (gameState.phase === "RESOLUTION" && gameState.lastOutcome) {
     return (
-      <ResolutionScreen
-        playerId={playerId}
-        balances={gameState.balances}
-        questionIndex={gameState.questionIndex}
-        pot={gameState.pot}
-        outcome={gameState.lastOutcome.outcome}
-        correctAnswer={gameState.lastOutcome.correctAnswer}
-        P1Answer={gameState.lastOutcome.P1Answer}
-        P2Answer={gameState.lastOutcome.P2Answer}
-        balanceChanges={gameState.lastOutcome.balanceChanges}
-        timeRemaining={timeRemaining}
-        opponentAlias={opponentAlias}
-        opponentElo={opponentElo}
-      />
+      <>
+        <ResolutionScreen
+          playerId={playerId}
+          balances={gameState.balances}
+          questionIndex={gameState.questionIndex}
+          pot={gameState.pot}
+          outcome={gameState.lastOutcome.outcome}
+          correctAnswer={gameState.lastOutcome.correctAnswer}
+          P1Answer={gameState.lastOutcome.P1Answer}
+          P2Answer={gameState.lastOutcome.P2Answer}
+          balanceChanges={gameState.lastOutcome.balanceChanges}
+          timeRemaining={timeRemaining}
+          opponentAlias={opponentAlias}
+          opponentElo={opponentElo}
+        />
+        {notification && (
+          <Notification message={notification} onDismiss={clearNotification} />
+        )}
+      </>
     );
   }
 
   if (gameState.phase === "COMPLETE") {
     return (
-      <CompleteScreen
-        playerId={playerId}
-        winner={gameState.winner}
-        balances={gameState.balances}
-        finalBalances={gameState.finalBalances}
-      />
+      <>
+        <CompleteScreen
+          playerId={playerId}
+          winner={gameState.winner}
+          balances={gameState.balances}
+          finalBalances={gameState.finalBalances}
+          opponentAlias={opponentAlias}
+        />
+        {notification && (
+          <Notification message={notification} onDismiss={clearNotification} />
+        )}
+      </>
     );
   }
 
-  return null;
+  return (
+    <>
+      {notification && (
+        <Notification message={notification} onDismiss={clearNotification} />
+      )}
+    </>
+  );
 }
 
 export default App;
