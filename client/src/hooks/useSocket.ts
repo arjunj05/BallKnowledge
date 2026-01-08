@@ -171,23 +171,22 @@ export function useSocket(
     socket.on(SocketEvents.BET_PLACED, (data: BetPlacedMessage) => {
       console.log("[Socket] Bet placed:", data);
 
-      // Show notification if opponent made the action
-      if (data.player !== playerId) {
-        const opponentName = opponentAlias || "Opponent";
-        let actionText = "";
+      // Show notification for betting action
+      const isYourAction = data.player === playerId;
+      const playerName = isYourAction ? "You" : (opponentAlias || "Opponent");
+      let actionText = "";
 
-        if (data.action === "BET") {
-          actionText = `bet ${data.amount}`;
-        } else if (data.action === "MATCH") {
-          actionText = `matched for ${data.amount}`;
-        } else if (data.action === "RAISE") {
-          actionText = `raised to ${data.amount}`;
-        } else if (data.action === "FOLD") {
-          actionText = "folded";
-        }
-
-        setNotification(`${opponentName} ${actionText}! Pot: ${data.pot}`);
+      if (data.action === "BET") {
+        actionText = `bet ${data.amount}`;
+      } else if (data.action === "MATCH") {
+        actionText = `matched for ${data.amount}`;
+      } else if (data.action === "RAISE") {
+        actionText = `raised to ${data.amount}`;
+      } else if (data.action === "FOLD") {
+        actionText = "folded";
       }
+
+      setNotification(`${playerName} ${actionText}! Pot: ${data.pot}`);
 
       setGameState((prev) => ({
         ...prev,

@@ -393,16 +393,24 @@ export class GameRoom {
       this.bettingState.pot += amountToMatch;
       this.broadcastBetPlaced(player, "MATCH", amountToMatch);
     } else {
-      // Partial match (all-in) - create side pot
+      // Partial match (all-in for less than opponent's bet)
       const allInAmount = playerBalance;
       this.bettingState.contributions[player] += allInAmount;
       this.players[player].balance = 0;
+
+      // Only the matched portion goes into the pot
+      // The unmatched portion stays with the opponent as a side pot
       this.bettingState.pot += allInAmount;
 
-      // Calculate side pot (opponent's unmatched amount)
+      // Side pot is the opponent's excess that can't be matched
       const unmatchedAmount = amountToMatch - allInAmount;
       this.bettingState.sidePot = unmatchedAmount;
-      this.bettingState.allInPlayer = player;
+
+      // Don't overwrite allInPlayer if it's already set
+      // This handles both players going all-in
+      if (!this.bettingState.allInPlayer) {
+        this.bettingState.allInPlayer = player;
+      }
 
       this.broadcastBetPlaced(player, "MATCH", allInAmount);
     }
@@ -789,14 +797,15 @@ export class GameRoom {
 
   private handleBothWrong(): void {
     // Return contributions to each player
+    // Note: contributions already include all money each player put in,
+    // including any "side pot" portion
     this.players.P1.balance += this.bettingState.contributions.P1;
     this.players.P2.balance += this.bettingState.contributions.P2;
 
-    // Return side pot to the player who created it (the one who wasn't all-in)
-    if (this.bettingState.sidePot > 0 && this.bettingState.allInPlayer) {
-      const nonAllInPlayer = this.getOtherPlayer(this.bettingState.allInPlayer);
-      this.players[nonAllInPlayer].balance += this.bettingState.sidePot;
-    }
+    // No need to handle side pot separately - it's already part of contributions
+    // The player who bet more gets their full contribution back
+    // The player who bet less gets their full contribution back
+    // Total money in game remains constant: 1000
 
     this.goToResolution("DRAW");
   }
