@@ -5,40 +5,57 @@ export class UserService {
    * Find or create a user by their Clerk ID
    */
   static async findOrCreateUser(clerkId: string, email: string, username?: string, alias?: string) {
+    // First, try to find by clerkId
     let user = await prisma.user.findUnique({
       where: { clerkId },
       include: { stats: true },
     });
 
     if (!user) {
-      // Create new user with initial stats
-      user = await prisma.user.create({
-        data: {
-          clerkId,
-          email,
-          username,
-          alias,
-          stats: {
-            create: {
-              gamesPlayed: 0,
-              gamesWon: 0,
-              gamesLost: 0,
-              gamesTied: 0,
-              questionsAnswered: 0,
-              questionsCorrect: 0,
-              questionsIncorrect: 0,
-              totalWinnings: 0,
-              highestBalance: 0,
-              eloRating: 1200,
-              winStreak: 0,
-              bestWinStreak: 0,
-            },
-          },
-        },
+      // If not found by clerkId, check by email (in case clerkId changed between dev/prod)
+      user = await prisma.user.findUnique({
+        where: { email },
         include: { stats: true },
       });
 
-      console.log(`[UserService] Created new user: ${email} (${clerkId})`);
+      if (user) {
+        // User exists with this email but different clerkId - update the clerkId
+        console.log(`[UserService] Updating clerkId for existing user: ${email}`);
+        user = await prisma.user.update({
+          where: { email },
+          data: { clerkId },
+          include: { stats: true },
+        });
+      } else {
+        // User doesn't exist at all - create new user with initial stats
+        user = await prisma.user.create({
+          data: {
+            clerkId,
+            email,
+            username,
+            alias,
+            stats: {
+              create: {
+                gamesPlayed: 0,
+                gamesWon: 0,
+                gamesLost: 0,
+                gamesTied: 0,
+                questionsAnswered: 0,
+                questionsCorrect: 0,
+                questionsIncorrect: 0,
+                totalWinnings: 0,
+                highestBalance: 0,
+                eloRating: 1200,
+                winStreak: 0,
+                bestWinStreak: 0,
+              },
+            },
+          },
+          include: { stats: true },
+        });
+
+        console.log(`[UserService] Created new user: ${email} (${clerkId})`);
+      }
     }
 
     return user;
