@@ -24,10 +24,23 @@ export async function authenticateSocket(
     }
 
     // Verify the JWT token (networkless verification)
-    // The issuer should be your Clerk Frontend API URL (e.g., https://your-domain.clerk.accounts.dev)
+    // The issuer should be your Clerk Frontend API URL
+    // Development: https://*.clerk.accounts.dev
+    // Production: Custom domain from CLERK_FRONTEND_API env var
     const payload = await verifyToken(token, {
       secretKey: process.env.CLERK_SECRET_KEY!,
-      issuer: (iss) => iss.startsWith("https://") && iss.includes(".clerk.accounts.dev"),
+      issuer: (iss) => {
+        // Accept Clerk's default domains (development)
+        if (iss.startsWith("https://") && iss.includes(".clerk.accounts.dev")) {
+          return true;
+        }
+        // Accept custom domain from environment variable (production)
+        const customDomain = process.env.CLERK_FRONTEND_API;
+        if (customDomain && iss === customDomain) {
+          return true;
+        }
+        return false;
+      },
     });
 
     if (!payload || !payload.sub) {

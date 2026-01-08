@@ -445,17 +445,47 @@ export class GameRoom {
     this.bettingState.bets[player] = amount;
     this.bettingState.contributions[player] = contribution;
     this.players[player].balance -= contribution;
-    this.bettingState.pot += contribution;
     this.bettingState.raises++;
-    this.bettingState.awaitingAction = otherPlayer;
 
     // Track if player went all-in
+    const wasAllInBefore = this.bettingState.allInPlayer !== null;
     if (this.players[player].balance === 0) {
-      this.bettingState.allInPlayer = player;
+      if (!this.bettingState.allInPlayer) {
+        this.bettingState.allInPlayer = player;
+      }
+    }
+
+    // Calculate main pot and side pot when both players are all-in with different amounts
+    if (wasAllInBefore && this.players.P1.balance === 0 && this.players.P2.balance === 0) {
+      // Both players are now all-in
+      const p1Contribution = this.bettingState.contributions.P1;
+      const p2Contribution = this.bettingState.contributions.P2;
+      const minContribution = Math.min(p1Contribution, p2Contribution);
+
+      // Main pot: 2x the minimum contribution (matched money)
+      this.bettingState.pot = minContribution * 2;
+
+      // Side pot: the difference (unmatched money from player with more)
+      this.bettingState.sidePot = Math.abs(p1Contribution - p2Contribution);
+
+      console.log(`[GameRoom ${this.roomId}] Both all-in: P1=${p1Contribution}, P2=${p2Contribution}, pot=${this.bettingState.pot}, sidePot=${this.bettingState.sidePot}`);
+    } else {
+      // Normal raise: add contribution to pot
+      this.bettingState.pot += contribution;
     }
 
     this.broadcastBetPlaced(player, "RAISE", amount);
-    this.sendBettingState();
+
+    // Check if both players are all-in - if so, proceed to clue immediately
+    if (this.players.P1.balance === 0 && this.players.P2.balance === 0) {
+      console.log(`[GameRoom ${this.roomId}] Both players all-in, proceeding to clue`);
+      this.bettingState.awaitingAction = null;
+      this.startCluePhase();
+    } else {
+      // Normal case: ask other player to respond
+      this.bettingState.awaitingAction = otherPlayer;
+      this.sendBettingState();
+    }
   }
 
   handleFold(socketId: string, player: PlayerId): void {
@@ -736,17 +766,12 @@ export class GameRoom {
     // Winner takes the main pot
     this.players[player].balance += this.bettingState.pot;
 
-    // Handle side pot - if winner is all-in player, opponent gets side pot back
-    // If winner is NOT all-in player, they get everything
-    if (this.bettingState.sidePot > 0) {
-      const otherPlayer = this.getOtherPlayer(player);
-      if (this.bettingState.allInPlayer === player) {
-        // All-in player won, opponent gets side pot back
-        this.players[otherPlayer].balance += this.bettingState.sidePot;
-      } else {
-        // Non-all-in player won, they get side pot too
-        this.players[player].balance += this.bettingState.sidePot;
-      }
+    // Handle side pot - this is always returned to the player who bet more
+    // because it represents money that couldn't be matched
+    if (this.bettingState.sidePot > 0 && this.bettingState.allInPlayer) {
+      const otherPlayer = this.getOtherPlayer(this.bettingState.allInPlayer);
+      // Return unmatched money to the player who bet more (not the all-in player)
+      this.players[otherPlayer].balance += this.bettingState.sidePot;
     }
 
     this.goToResolution(player === "P1" ? "P1_WIN" : "P2_WIN");
