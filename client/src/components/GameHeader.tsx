@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { PlayerId } from "shared";
+import * as Shared from "shared/dist";
+const { GAME_CONFIG } = Shared;
 
 interface GameHeaderProps {
   playerId: PlayerId | null;
@@ -37,7 +39,7 @@ export function GameHeader({ playerId, balances, questionIndex, pot, opponentAli
         )}
       </div>
       <div className="text-center">
-        <div className="text-sm text-gray-400">Question {questionIndex + 1}/3</div>
+        <div className="text-sm text-gray-400">Question {questionIndex + 1}/{GAME_CONFIG.questionsPerMatch}</div>
         <div
           className={`text-xl font-bold text-yellow-400 transition-all duration-300 ${
             isPotAnimating ? "scale-125 text-green-400" : "scale-100"

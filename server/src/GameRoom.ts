@@ -710,7 +710,18 @@ export class GameRoom {
 
     const question = this.getCurrentQuestion();
     const normalized = text.trim().toLowerCase();
-    const correct = question.acceptedAnswers.includes(normalized);
+
+    // Normalize both player answer AND accepted answers for case-insensitive comparison
+    const normalizedAcceptedAnswers = question.acceptedAnswers.map(a => a.toLowerCase());
+    const correct = normalizedAcceptedAnswers.includes(normalized);
+
+    console.log(`[GameRoom ${this.roomId}] Answer check:`, {
+      playerAnswer: text,
+      normalized,
+      acceptedAnswers: question.acceptedAnswers,
+      normalizedAcceptedAnswers,
+      correct,
+    });
 
     this.players[player].answer = text;
 

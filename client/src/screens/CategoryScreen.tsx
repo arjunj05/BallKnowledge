@@ -1,4 +1,6 @@
 import type { PlayerId } from "shared";
+import * as Shared from "shared/dist";
+const { GAME_CONFIG } = Shared;
 import { GameHeader } from "../components/GameHeader";
 import { Timer } from "../components/Timer";
 
@@ -27,7 +29,7 @@ export function CategoryScreen({
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       <GameHeader playerId={playerId} balances={balances} questionIndex={questionIndex} pot={pot} opponentAlias={opponentAlias} opponentElo={opponentElo} />
       <div className="flex-1 flex flex-col items-center justify-center p-4">
-        <p className="text-gray-400 mb-2">Question {questionIndex + 1} of 3</p>
+        <p className="text-gray-400 mb-2">Question {questionIndex + 1} of {GAME_CONFIG.questionsPerMatch}</p>
         <div className="text-4xl font-bold mb-8 text-center px-4 py-6 bg-gray-800 rounded-xl">
           {category}
         </div>
