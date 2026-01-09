@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { io } from "socket.io-client";
 import type { Socket } from "socket.io-client";
@@ -66,6 +66,7 @@ export function useSocket(
   const [connected, setConnected] = useState(false);
   const [roomId, setRoomId] = useState<string>("");
   const [playerId, setPlayerId] = useState<PlayerId | null>(null);
+  const playerIdRef = useRef<PlayerId | null>(null); // Ref to track current playerId
   const [opponentConnected, setOpponentConnected] = useState(false);
   const [opponentAlias, setOpponentAlias] = useState<string>("");
   const [opponentElo, setOpponentElo] = useState<number>(1200);
@@ -117,6 +118,7 @@ export function useSocket(
       console.log("[Socket] Room state:", data);
       setRoomId(data.roomId);
       setPlayerId(data.you);
+      playerIdRef.current = data.you; // Update ref so event handlers have current value
       setOpponentAlias(data.opponentAlias);
       setOpponentElo(data.opponentElo);
       setGameState((prev) => ({
@@ -170,23 +172,31 @@ export function useSocket(
 
     socket.on(SocketEvents.BET_PLACED, (data: BetPlacedMessage) => {
       console.log("[Socket] Bet placed:", data);
+      console.log("[Socket] Current playerId (ref):", playerIdRef.current);
+      console.log("[Socket] Action player:", data.player);
+      console.log("[Socket] Is your action?", data.player === playerIdRef.current);
 
-      // Show notification for betting action
-      const isYourAction = data.player === playerId;
-      const playerName = isYourAction ? "You" : (opponentAlias || "Opponent");
-      let actionText = "";
+      // Show notification ONLY for opponent's actions (not your own)
+      const isYourAction = data.player === playerIdRef.current;
+      if (!isYourAction) {
+        const playerName = opponentAlias || "Opponent";
+        let actionText = "";
 
-      if (data.action === "BET") {
-        actionText = `bet ${data.amount}`;
-      } else if (data.action === "MATCH") {
-        actionText = `matched for ${data.amount}`;
-      } else if (data.action === "RAISE") {
-        actionText = `raised to ${data.amount}`;
-      } else if (data.action === "FOLD") {
-        actionText = "folded";
+        if (data.action === "BET") {
+          actionText = `bet ${data.amount}`;
+        } else if (data.action === "MATCH") {
+          actionText = `matched for ${data.amount}`;
+        } else if (data.action === "RAISE") {
+          actionText = `raised to ${data.amount}`;
+        } else if (data.action === "FOLD") {
+          actionText = "folded";
+        }
+
+        console.log("[Socket] Showing notification:", `${playerName} ${actionText}! Pot: ${data.pot}`);
+        setNotification(`${playerName} ${actionText}! Pot: ${data.pot}`);
+      } else {
+        console.log("[Socket] Skipping notification - it's your action");
       }
-
-      setNotification(`${playerName} ${actionText}! Pot: ${data.pot}`);
 
       setGameState((prev) => ({
         ...prev,

@@ -4,7 +4,7 @@
 
 export const GAME_CONFIG = {
   startingBalance: 500,
-  questionsPerMatch: 3,
+  questionsPerMatch: 4,
   revealRateCharsPerSec: 12,
   postClueTimeoutSec: 5,
   answerTimeLimitSec: 5,
