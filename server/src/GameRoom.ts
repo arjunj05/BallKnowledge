@@ -558,6 +558,10 @@ export class GameRoom {
       playerContribution: this.bettingState.awaitingAction
         ? this.bettingState.contributions[this.bettingState.awaitingAction]
         : 0,
+      foldsRemaining: {
+        P1: this.players.P1.foldsRemaining,
+        P2: this.players.P2.foldsRemaining,
+      },
     };
 
     this.emit(SocketEvents.BET_PLACED, message);

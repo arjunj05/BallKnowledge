@@ -7,7 +7,7 @@ export const GAME_CONFIG = {
   questionsPerMatch: 4,
   revealRateCharsPerSec: 12,
   postClueTimeoutSec: 5,
-  answerTimeLimitSec: 5,
+  answerTimeLimitSec: 8,
   categoryRevealSec: 3,
   betTimeLimitSec: 15,
   foldsPerPlayer: 2,
@@ -172,6 +172,7 @@ export interface BetPlacedMessage {
   currentBet: number | null;
   deadline: number | null;
   playerContribution: number;
+  foldsRemaining: Record<PlayerId, number>;
 }
 
 export interface ClueTickMessage {

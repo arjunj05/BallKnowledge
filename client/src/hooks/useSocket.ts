@@ -206,6 +206,7 @@ export function useSocket(
         currentBet: data.currentBet,
         deadline: data.deadline,
         playerContribution: data.playerContribution,
+        foldsRemaining: data.foldsRemaining,
       }));
     });
 
