@@ -65,54 +65,94 @@ export function AnswerScreen({
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col">
+    <div className="min-h-screen bg-broadcast-dark text-white flex flex-col">
       <GameHeader playerId={playerId} balances={balances} questionIndex={questionIndex} pot={pot} opponentAlias={opponentAlias} opponentElo={opponentElo} />
-      <div className="flex-1 flex flex-col items-center justify-center p-4">
-        <div className="bg-gray-800 rounded-xl p-6 w-full max-w-2xl">
-          <p className="text-sm text-gray-400 mb-2 text-center">{category}</p>
-          <div className="min-h-[120px] text-xl leading-relaxed mb-6 font-mono">
-            {revealedClue}
-          </div>
 
-          {isMyTurn ? (
-            <div className="space-y-4">
-              <input
-                ref={answerInputRef}
-                type="text"
-                value={answerInput}
-                onChange={(e) => handleAnswerChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Type your answer..."
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-xl focus:outline-none focus:border-blue-500"
-                autoFocus
-              />
-              <button
-                onClick={onSubmitAnswer}
-                disabled={!answerInput.trim() || submittingAnswer}
-                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 py-3 rounded-lg font-bold transition-colors"
-              >
-                {submittingAnswer ? "Submitting..." : "Submit Answer"}
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="text-center">
-                <p className="text-xl text-yellow-400 mb-4">
-                  {getOtherPlayer(playerId)} is answering...
-                </p>
+      <div className="flex-1 flex flex-col items-center justify-center p-4 relative">
+        {/* Background */}
+        <div className="absolute inset-0 bg-diagonal-stripes opacity-10 pointer-events-none" />
+
+        <div className="broadcast-card rounded-lg w-full max-w-2xl relative z-10 overflow-hidden animate-scale-in">
+          {/* Category header with answering indicator */}
+          <div className="bg-gradient-to-r from-espn-red to-espn-darkRed px-6 py-3 flex items-center justify-between">
+            <span className="font-sans text-sm uppercase tracking-widest text-white/80">{category}</span>
+            {isMyTurn ? (
+              <div className="live-badge px-3 py-1 rounded text-xs font-bold uppercase tracking-wider animate-pulse-live">
+                Your Turn
               </div>
-              {opponentTyping && (
-                <div className="bg-gray-700 rounded-lg px-4 py-3 text-xl border border-gray-600">
-                  <div className="text-gray-400 text-sm mb-1">Their answer:</div>
-                  <div className="font-mono text-blue-300">{opponentTyping}</div>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="mt-4">
-            <Timer timeRemaining={timeRemaining} />
+            ) : (
+              <div className="bg-espn-yellow/20 px-3 py-1 rounded text-xs font-bold uppercase tracking-wider text-espn-yellow">
+                Watching
+              </div>
+            )}
           </div>
+
+          <div className="p-6">
+            {/* Clue display */}
+            <div className="min-h-[120px] text-xl leading-relaxed mb-6 font-mono text-white bg-broadcast-900 rounded-lg p-4 border border-white/10">
+              {revealedClue}
+            </div>
+
+            {isMyTurn ? (
+              <div className="space-y-4">
+                {/* Answer input */}
+                <input
+                  ref={answerInputRef}
+                  type="text"
+                  value={answerInput}
+                  onChange={(e) => handleAnswerChange(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Type your answer..."
+                  className="input-broadcast w-full px-4 py-4 text-xl rounded text-white placeholder:text-metal-steel"
+                  autoFocus
+                />
+
+                {/* Submit button */}
+                <button
+                  onClick={onSubmitAnswer}
+                  disabled={!answerInput.trim() || submittingAnswer}
+                  className="
+                    w-full py-4 rounded font-sans text-xl font-bold uppercase tracking-wide transition-all
+                    bg-gradient-to-b from-score-green to-green-700
+                    hover:from-green-500 hover:to-green-600
+                    disabled:from-broadcast-600 disabled:to-broadcast-800 disabled:cursor-not-allowed
+                    shadow-broadcast
+                  "
+                >
+                  {submittingAnswer ? "Submitting..." : "Submit Answer"}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Watching opponent answer */}
+                <div className="text-center">
+                  <div className="inline-block lower-third px-6 py-2 mb-4">
+                    <span className="font-sans text-sm uppercase tracking-widest">
+                      {getOtherPlayer(playerId)} is answering...
+                    </span>
+                  </div>
+                </div>
+
+                {/* Opponent's typing preview */}
+                {opponentTyping && (
+                  <div className="bg-broadcast-900 rounded-lg p-4 border-2 border-espn-yellow/30">
+                    <div className="font-sans text-xs uppercase tracking-widest text-metal-silver mb-2">
+                      Their Answer
+                    </div>
+                    <div className="font-mono text-xl text-espn-yellow">
+                      {opponentTyping}
+                      <span className="inline-block w-2 h-5 bg-espn-yellow/50 ml-1 animate-pulse" />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <Timer timeRemaining={timeRemaining} urgent />
+          </div>
+
+          {/* Bottom accent */}
+          <div className="swoosh-line" />
         </div>
       </div>
     </div>

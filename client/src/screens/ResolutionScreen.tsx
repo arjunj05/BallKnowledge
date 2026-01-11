@@ -39,58 +39,98 @@ export function ResolutionScreen({
   const isDraw = outcome === "DRAW";
   const isFold = outcome.includes("FOLD");
 
+  const getOutcomeGradient = () => {
+    if (isWinner) return "from-score-green to-green-700";
+    if (isDraw) return "from-espn-yellow to-yellow-600";
+    return "from-espn-red to-espn-darkRed";
+  };
+
+  const getOutcomeText = () => {
+    if (isWinner) return "You Win!";
+    if (isDraw) return "Draw";
+    if (isFold) return "Fold";
+    return "Wrong!";
+  };
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col">
+    <div className="min-h-screen bg-broadcast-dark text-white flex flex-col">
       <GameHeader playerId={playerId} balances={balances} questionIndex={questionIndex} pot={pot} opponentAlias={opponentAlias} opponentElo={opponentElo} />
-      <div className="flex-1 flex flex-col items-center justify-center p-4">
-        <div className="bg-gray-800 rounded-xl p-8 w-full max-w-md text-center">
-          <div
-            className={`text-4xl font-bold mb-4 ${
-              isWinner ? "text-green-400" : isDraw ? "text-gray-400" : "text-red-400"
-            }`}
-          >
-            {isWinner ? "You Win!" : isDraw ? "Draw" : isFold ? "Fold" : "Wrong!"}
-          </div>
 
-          <div className="text-gray-400 mb-4">Correct answer:</div>
-          <div className="text-2xl font-bold mb-6 text-blue-400">{correctAnswer}</div>
+      <div className="flex-1 flex flex-col items-center justify-center p-4 relative">
+        {/* Background */}
+        <div className="absolute inset-0 bg-diagonal-stripes opacity-10 pointer-events-none" />
 
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="bg-gray-700 rounded-lg p-4">
-              <div className="text-sm text-gray-400">{playerId === "P1" ? "You" : opponentAlias || "Opponent"}</div>
-              <div className="text-lg">{P1Answer || "(no answer)"}</div>
-              <div
-                className={`text-lg font-bold ${
-                  balanceChanges.P1 > 0
-                    ? "text-green-400"
-                    : balanceChanges.P1 < 0
-                    ? "text-red-400"
-                    : "text-gray-400"
-                }`}
-              >
-                {balanceChanges.P1 > 0 ? "+" : ""}
-                {balanceChanges.P1}
-              </div>
-            </div>
-            <div className="bg-gray-700 rounded-lg p-4">
-              <div className="text-sm text-gray-400">{playerId === "P2" ? "You" : opponentAlias || "Opponent"}</div>
-              <div className="text-lg">{P2Answer || "(no answer)"}</div>
-              <div
-                className={`text-lg font-bold ${
-                  balanceChanges.P2 > 0
-                    ? "text-green-400"
-                    : balanceChanges.P2 < 0
-                    ? "text-red-400"
-                    : "text-gray-400"
-                }`}
-              >
-                {balanceChanges.P2 > 0 ? "+" : ""}
-                {balanceChanges.P2}
-              </div>
+        <div className="broadcast-card rounded-lg w-full max-w-lg relative z-10 overflow-hidden">
+          {/* Outcome banner - like a highlight reel graphic */}
+          <div className={`bg-gradient-to-r ${getOutcomeGradient()} px-6 py-4 text-center animate-slide-in-down`}>
+            <div className="font-display text-4xl uppercase tracking-wider drop-shadow-lg animate-score-pop">
+              {getOutcomeText()}
             </div>
           </div>
 
-          <Timer timeRemaining={timeRemaining} label="Next question in" />
+          <div className="p-6">
+            {/* Correct answer reveal */}
+            <div className="text-center mb-6 animate-slide-in-up">
+              <div className="font-sans text-xs uppercase tracking-widest text-metal-silver mb-2">
+                Correct Answer
+              </div>
+              <div className="score-display inline-block px-6 py-3 rounded-lg">
+                <span className="font-display text-2xl text-espn-yellow">{correctAnswer}</span>
+              </div>
+            </div>
+
+            {/* Player answers comparison - like a sports stat comparison */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {/* P1 */}
+              <div className={`
+                broadcast-card rounded-lg p-4 text-center
+                ${playerId === "P1" ? "ring-2 ring-espn-yellow" : ""}
+              `}>
+                <div className="font-sans text-xs uppercase tracking-widest text-metal-silver mb-2">
+                  {playerId === "P1" ? "You" : opponentAlias || "Opponent"}
+                </div>
+                <div className="font-mono text-lg text-white mb-3 min-h-[28px]">
+                  {P1Answer || <span className="text-metal-steel italic">No answer</span>}
+                </div>
+                <div
+                  className={`
+                    font-score text-2xl font-bold animate-score-pop
+                    ${balanceChanges.P1 > 0 ? "text-score-green" : balanceChanges.P1 < 0 ? "text-score-red" : "text-metal-silver"}
+                  `}
+                >
+                  {balanceChanges.P1 > 0 ? "+" : ""}
+                  {balanceChanges.P1}
+                </div>
+              </div>
+
+              {/* P2 */}
+              <div className={`
+                broadcast-card rounded-lg p-4 text-center
+                ${playerId === "P2" ? "ring-2 ring-espn-yellow" : ""}
+              `}>
+                <div className="font-sans text-xs uppercase tracking-widest text-metal-silver mb-2">
+                  {playerId === "P2" ? "You" : opponentAlias || "Opponent"}
+                </div>
+                <div className="font-mono text-lg text-white mb-3 min-h-[28px]">
+                  {P2Answer || <span className="text-metal-steel italic">No answer</span>}
+                </div>
+                <div
+                  className={`
+                    font-score text-2xl font-bold animate-score-pop delay-200
+                    ${balanceChanges.P2 > 0 ? "text-score-green" : balanceChanges.P2 < 0 ? "text-score-red" : "text-metal-silver"}
+                  `}
+                >
+                  {balanceChanges.P2 > 0 ? "+" : ""}
+                  {balanceChanges.P2}
+                </div>
+              </div>
+            </div>
+
+            <Timer timeRemaining={timeRemaining} label="Next question in" />
+          </div>
+
+          {/* Bottom accent */}
+          <div className="swoosh-line" />
         </div>
       </div>
     </div>
