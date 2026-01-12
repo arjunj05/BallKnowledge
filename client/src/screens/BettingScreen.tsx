@@ -1,6 +1,8 @@
+import { useEffect, useRef, useState } from "react";
 import type { PlayerId, BetAction } from "shared";
-import { GameHeader } from "../components/GameHeader";
 import { Timer } from "../components/Timer";
+import * as Shared from "shared/dist";
+const { GAME_CONFIG } = Shared;
 
 interface BettingScreenProps {
   playerId: PlayerId | null;
@@ -49,24 +51,122 @@ export function BettingScreen({
   const canMatch = availableActions.includes("MATCH");
   const canRaise = availableActions.includes("RAISE");
 
+  // Track pot changes for animation
+  const [isPotAnimating, setIsPotAnimating] = useState(false);
+  const [potDelta, setPotDelta] = useState<number | null>(null);
+  const prevPotRef = useRef(pot);
+
+  useEffect(() => {
+    if (pot > prevPotRef.current) {
+      const delta = pot - prevPotRef.current;
+      setPotDelta(delta);
+      setIsPotAnimating(true);
+      const timer = setTimeout(() => {
+        setIsPotAnimating(false);
+        setPotDelta(null);
+      }, 1000);
+      prevPotRef.current = pot;
+      return () => clearTimeout(timer);
+    }
+    prevPotRef.current = pot;
+  }, [pot]);
+
   return (
     <div className="min-h-screen bg-broadcast-dark text-white flex flex-col">
-      <GameHeader playerId={playerId} balances={balances} questionIndex={questionIndex} pot={pot} opponentAlias={opponentAlias} opponentElo={opponentElo} />
+      {/* Simplified header - just balances, no pot (shown prominently below) */}
+      <div className="score-panel">
+        <div className="h-1 bg-gradient-to-r from-espn-red via-espn-yellow to-espn-red" />
+        <div className="px-4 py-3 flex justify-between items-center">
+          {/* P1 Balance */}
+          <div className="flex items-center gap-3">
+            <div className={`score-display px-4 py-2 rounded ${playerId === "P1" ? "ring-2 ring-espn-yellow" : ""}`}>
+              <div className="font-score text-2xl font-bold text-white">{balances.P1}</div>
+            </div>
+            <div className="text-left">
+              <div className={`font-sans text-sm uppercase tracking-wide ${playerId === "P1" ? "text-espn-yellow" : "text-metal-silver"}`}>
+                {playerId === "P1" ? "You" : opponentAlias || "Opponent"}
+              </div>
+              {playerId === "P2" && opponentElo && (
+                <div className="text-xs text-metal-steel font-mono">{opponentElo} ELO</div>
+              )}
+            </div>
+          </div>
+
+          {/* Center - Question indicator & Betting label */}
+          <div className="text-center">
+            <div className="live-badge px-3 py-1 rounded text-xs font-bold uppercase tracking-wider mb-1">
+              Betting
+            </div>
+            <span className="text-metal-silver text-xs font-sans uppercase tracking-wider">
+              Q{questionIndex + 1}/{GAME_CONFIG.questionsPerMatch}
+            </span>
+          </div>
+
+          {/* P2 Balance */}
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className={`font-sans text-sm uppercase tracking-wide ${playerId === "P2" ? "text-espn-yellow" : "text-metal-silver"}`}>
+                {playerId === "P2" ? "You" : opponentAlias || "Opponent"}
+              </div>
+              {playerId === "P1" && opponentElo && (
+                <div className="text-xs text-metal-steel font-mono">{opponentElo} ELO</div>
+              )}
+            </div>
+            <div className={`score-display px-4 py-2 rounded ${playerId === "P2" ? "ring-2 ring-espn-yellow" : ""}`}>
+              <div className="font-score text-2xl font-bold text-white">{balances.P2}</div>
+            </div>
+          </div>
+        </div>
+        <div className="swoosh-line" />
+      </div>
 
       <div className="flex-1 flex flex-col items-center justify-center p-4 relative">
         {/* Background */}
         <div className="absolute inset-0 bg-diagonal-stripes opacity-10 pointer-events-none" />
 
-        <div className="broadcast-card rounded-lg w-full max-w-lg relative z-10 overflow-hidden animate-scale-in">
-          {/* Category header bar */}
-          <div className="bg-gradient-to-r from-espn-red to-espn-darkRed px-6 py-3 flex items-center justify-between">
-            <span className="font-sans text-sm uppercase tracking-widest text-white/80">{category}</span>
-            {currentBet && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs uppercase text-white/60">Current Bet</span>
-                <span className="font-score text-xl font-bold text-espn-yellow">{currentBet}</span>
+        {/* Prominent Pot Display - THE main pot indicator */}
+        <div className="relative z-10 mb-6 animate-slide-in-down">
+          <div className={`
+            relative px-12 py-5 rounded-lg text-center
+            bg-gradient-to-b from-broadcast-700 to-broadcast-900
+            border-2 ${isPotAnimating ? 'border-score-green' : 'border-espn-yellow/50'}
+            shadow-[0_0_30px_rgba(255,204,0,0.3)]
+            transition-all duration-300
+            ${isPotAnimating ? 'scale-110 shadow-[0_0_50px_rgba(0,204,102,0.5)]' : 'scale-100'}
+          `}>
+            {/* Pot label */}
+            <div className="font-sans text-sm uppercase tracking-[0.3em] text-metal-silver mb-1">
+              Total Pot
+            </div>
+
+            {/* Pot amount */}
+            <div className={`
+              font-score text-6xl font-bold transition-all duration-300
+              ${isPotAnimating ? 'text-score-green' : 'text-espn-yellow'}
+            `}>
+              {pot}
+            </div>
+
+            {/* Animated delta indicator */}
+            {isPotAnimating && potDelta && (
+              <div className="absolute -top-4 -right-4 animate-score-pop">
+                <div className="bg-score-green text-white font-score font-bold text-xl px-3 py-1 rounded-lg shadow-glow-green">
+                  +{potDelta}
+                </div>
               </div>
             )}
+
+            {/* Glow effect when animating */}
+            {isPotAnimating && (
+              <div className="absolute inset-0 rounded-lg bg-score-green/20 animate-pulse pointer-events-none" />
+            )}
+          </div>
+        </div>
+
+        <div className="broadcast-card rounded-lg w-full max-w-lg relative z-10 overflow-hidden animate-scale-in">
+          {/* Category header bar - simplified, no redundant bet info */}
+          <div className="bg-gradient-to-r from-espn-red to-espn-darkRed px-6 py-3">
+            <span className="font-sans text-sm uppercase tracking-widest text-white">{category}</span>
           </div>
 
           <div className="p-6">
