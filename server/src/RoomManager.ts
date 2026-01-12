@@ -170,6 +170,23 @@ export class RoomManager {
       console.log(`[RoomManager] Loaded questions for room ${room.roomId}`);
     } catch (err) {
       console.error(`[RoomManager] Error loading questions for room ${room.roomId}:`, err);
+      // Notify both players of the error and clean up the room
+      this.io.to(room.roomId).emit(SocketEvents.ERROR, {
+        code: "QUESTION_LOAD_FAILED",
+        message: "Failed to load questions. Please try again.",
+      });
+      // Clean up the room
+      for (const [, connection] of room.players) {
+        const socket = this.io.sockets.sockets.get(connection.socketId);
+        if (socket) {
+          socket.leave(room.roomId);
+        }
+        this.socketToRoom.delete(connection.socketId);
+      }
+      room.gameRoom?.destroy();
+      this.rooms.delete(room.roomId);
+      console.log(`[RoomManager] Room ${room.roomId} cleaned up due to question load failure`);
+      return;
     }
 
     // Send updated room state with opponent info to both players
@@ -229,6 +246,8 @@ export class RoomManager {
       }
     }
 
+    // Clean up Socket.IO room membership to prevent memory leaks
+    socket.leave(roomId);
     this.socketToRoom.delete(socket.id);
 
     console.log(`[RoomManager] ${socket.id} (${disconnectedPlayer}) left room ${roomId}`);

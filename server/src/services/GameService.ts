@@ -133,12 +133,54 @@ export class GameService {
 
   /**
    * Fetch a random set of questions from the DB
+   * Uses database-level random sampling for better performance
    */
   static async getRandomQuestions(count: number): Promise<Question[]> {
-    const rows = await prisma.question.findMany();
-    // Simple shuffle and slice for now
-    const shuffled = rows.sort(() => Math.random() - 0.5).slice(0, count);
-    return shuffled.map((r: any) => ({
+    // Get total count first to handle edge cases
+    const totalCount = await prisma.question.count();
+
+    if (totalCount === 0) {
+      console.error("[GameService] No questions found in database!");
+      throw new Error("No questions available in database");
+    }
+
+    if (totalCount < count) {
+      console.warn(`[GameService] Only ${totalCount} questions available, requested ${count}`);
+    }
+
+    // For small datasets, fetch all and shuffle (simpler)
+    // For larger datasets (>100), use skip-based sampling for better performance
+    let rows;
+    if (totalCount <= 100) {
+      rows = await prisma.question.findMany();
+      // Fisher-Yates shuffle for proper randomization
+      for (let i = rows.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [rows[i], rows[j]] = [rows[j], rows[i]];
+      }
+      rows = rows.slice(0, count);
+    } else {
+      // Sample random questions using skip-based approach
+      const selectedIndices = new Set<number>();
+      while (selectedIndices.size < Math.min(count, totalCount)) {
+        selectedIndices.add(Math.floor(Math.random() * totalCount));
+      }
+
+      rows = [];
+      for (const idx of selectedIndices) {
+        const question = await prisma.question.findFirst({
+          skip: idx,
+          take: 1,
+        });
+        if (question) rows.push(question);
+      }
+    }
+
+    if (rows.length === 0) {
+      throw new Error("Failed to load questions from database");
+    }
+
+    return rows.map((r: any) => ({
       id: r.id,
       category: r.category,
       clue: r.clue,

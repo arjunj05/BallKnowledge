@@ -355,3 +355,17 @@ io.on("connection", (socket) => {
 httpServer.listen(PORT, () => {
   console.log(`[Server] Running on http://localhost:${PORT}`);
 });
+
+// Graceful shutdown handlers
+const shutdown = () => {
+  console.log("[Server] Shutting down gracefully...");
+  rateLimiter.destroy();
+  io.close();
+  httpServer.close(() => {
+    console.log("[Server] HTTP server closed");
+    process.exit(0);
+  });
+};
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);

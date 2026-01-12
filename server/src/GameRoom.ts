@@ -70,6 +70,10 @@ export class GameRoom {
   // Socket tracking for player identity validation
   private socketPlayerMap: Map<string, PlayerId> = new Map();
 
+  // Synchronization lock to prevent race conditions in betting/answer phases
+  private processingAction: boolean = false;
+  private destroyed: boolean = false;
+
   private bettingState: BettingState & { sidePot: number; allInPlayer: PlayerId | null } = {
     firstActor: "P1",
     bets: { P1: null, P2: null },
@@ -119,12 +123,19 @@ export class GameRoom {
   }
 
   private emit(event: string, data: unknown): void {
+    if (this.destroyed) return;
     this.io.to(this.roomId).emit(event, data);
   }
 
   private clearAllTimers(): void {
-    Object.values(this.timers).forEach((timer) => {
-      if (timer) clearTimeout(timer);
+    // clueTick uses setInterval, others use setTimeout
+    if (this.timers.clueTick) {
+      clearInterval(this.timers.clueTick);
+    }
+    Object.entries(this.timers).forEach(([key, timer]) => {
+      if (timer && key !== "clueTick") {
+        clearTimeout(timer);
+      }
     });
     this.timers = {};
   }
@@ -328,7 +339,17 @@ export class GameRoom {
     if (!this.validateSocketPlayer(socketId, player)) {
       return;
     }
-    this.handleBetInternal(player, amount);
+    // Prevent race conditions - reject if already processing an action
+    if (this.processingAction || this.destroyed) {
+      console.log(`[GameRoom ${this.roomId}] Rejected BET from ${player} - already processing action`);
+      return;
+    }
+    this.processingAction = true;
+    try {
+      this.handleBetInternal(player, amount);
+    } finally {
+      this.processingAction = false;
+    }
   }
 
   private handleBetInternal(player: PlayerId, amount: number): void {
@@ -368,7 +389,17 @@ export class GameRoom {
     if (!this.validateSocketPlayer(socketId, player)) {
       return;
     }
-    this.handleMatchInternal(player);
+    // Prevent race conditions - reject if already processing an action
+    if (this.processingAction || this.destroyed) {
+      console.log(`[GameRoom ${this.roomId}] Rejected MATCH from ${player} - already processing action`);
+      return;
+    }
+    this.processingAction = true;
+    try {
+      this.handleMatchInternal(player);
+    } finally {
+      this.processingAction = false;
+    }
   }
 
   private handleMatchInternal(player: PlayerId): void {
@@ -424,7 +455,17 @@ export class GameRoom {
     if (!this.validateSocketPlayer(socketId, player)) {
       return;
     }
-    this.handleRaiseInternal(player, amount);
+    // Prevent race conditions - reject if already processing an action
+    if (this.processingAction || this.destroyed) {
+      console.log(`[GameRoom ${this.roomId}] Rejected RAISE from ${player} - already processing action`);
+      return;
+    }
+    this.processingAction = true;
+    try {
+      this.handleRaiseInternal(player, amount);
+    } finally {
+      this.processingAction = false;
+    }
   }
 
   private handleRaiseInternal(player: PlayerId, amount: number): void {
@@ -493,7 +534,17 @@ export class GameRoom {
     if (!this.validateSocketPlayer(socketId, player)) {
       return;
     }
-    this.handleFoldInternal(player);
+    // Prevent race conditions - reject if already processing an action
+    if (this.processingAction || this.destroyed) {
+      console.log(`[GameRoom ${this.roomId}] Rejected FOLD from ${player} - already processing action`);
+      return;
+    }
+    this.processingAction = true;
+    try {
+      this.handleFoldInternal(player);
+    } finally {
+      this.processingAction = false;
+    }
   }
 
   private handleFoldInternal(player: PlayerId): void {
@@ -670,7 +721,17 @@ export class GameRoom {
     if (!this.validateSocketPlayer(socketId, player)) {
       return;
     }
-    this.handleBuzzInternal(player);
+    // Prevent race conditions - reject if already processing an action
+    if (this.processingAction || this.destroyed) {
+      console.log(`[GameRoom ${this.roomId}] Rejected BUZZ from ${player} - already processing action`);
+      return;
+    }
+    this.processingAction = true;
+    try {
+      this.handleBuzzInternal(player);
+    } finally {
+      this.processingAction = false;
+    }
   }
 
   private handleBuzzInternal(player: PlayerId): void {
@@ -703,7 +764,17 @@ export class GameRoom {
     if (!this.validateSocketPlayer(socketId, player)) {
       return;
     }
-    this.handleAnswerInternal(player, text);
+    // Prevent race conditions - reject if already processing an action
+    if (this.processingAction || this.destroyed) {
+      console.log(`[GameRoom ${this.roomId}] Rejected ANSWER from ${player} - already processing action`);
+      return;
+    }
+    this.processingAction = true;
+    try {
+      this.handleAnswerInternal(player, text);
+    } finally {
+      this.processingAction = false;
+    }
   }
 
   private handleAnswerInternal(player: PlayerId, text: string): void {
@@ -891,6 +962,17 @@ export class GameRoom {
       this.currentRoundData.player1BalanceAfter = this.players.P1.balance;
       this.currentRoundData.player2BalanceAfter = this.players.P2.balance;
 
+      // Ensure betting data has defaults (in case of early fold before clue phase)
+      if (this.currentRoundData.potAmount === undefined) {
+        this.currentRoundData.potAmount = this.bettingState.pot;
+      }
+      if (this.currentRoundData.player1Bet === undefined) {
+        this.currentRoundData.player1Bet = this.bettingState.contributions.P1;
+      }
+      if (this.currentRoundData.player2Bet === undefined) {
+        this.currentRoundData.player2Bet = this.bettingState.contributions.P2;
+      }
+
       // Save completed round to history
       this.roundHistory.push(this.currentRoundData as RoundData);
       this.currentRoundData = null;
@@ -1068,6 +1150,9 @@ export class GameRoom {
   // ============================================================================
 
   destroy(): void {
+    console.log(`[GameRoom ${this.roomId}] Destroying game room`);
+    this.destroyed = true;
     this.clearAllTimers();
+    this.socketPlayerMap.clear();
   }
 }
