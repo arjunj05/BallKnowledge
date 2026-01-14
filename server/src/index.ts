@@ -54,6 +54,17 @@ app.use("/api/admin", requireAdmin, adminRouter);
 io.on("connection", (socket) => {
   console.log(`[Socket] Client connected: ${socket.id}`);
 
+  // Check if user is already in an active game and auto-rejoin
+  const authSocket = socket as AuthenticatedSocket;
+  if (authSocket.dbUserId) {
+    const existingRoom = roomManager.getRoomByUserId(authSocket.dbUserId);
+    if (existingRoom && existingRoom.gameStarted) {
+      console.log(`[Socket] User ${authSocket.dbUserId} has active game in room ${existingRoom.roomId}, auto-rejoining`);
+      // Trigger auto-rejoin by emitting a special event
+      roomManager.autoRejoin(socket, existingRoom.roomId);
+    }
+  }
+
   // Room management
   socket.on(SocketEvents.CREATE_ROOM, (callback) => {
     const result = roomManager.createRoom(socket);
