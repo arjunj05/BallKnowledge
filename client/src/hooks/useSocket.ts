@@ -121,44 +121,13 @@ export function useSocket(
       playerIdRef.current = data.you; // Update ref so event handlers have current value
       setOpponentAlias(data.opponentAlias);
       setOpponentElo(data.opponentElo);
-
-      // Check if this is a mid-game rejoin with full state
-      if (data.currentState) {
-        console.log("[Socket] Mid-game rejoin - restoring full state:", data.currentState);
-        const state = data.currentState;
-        // Get the rejoining player's contribution
-        const myContribution = data.you ? state.playerContributions[data.you] : 0;
-        setGameState((prev) => ({
-          ...prev,
-          phase: state.phase,
-          questionIndex: state.questionIndex,
-          balances: state.balances,
-          foldsRemaining: state.foldsRemaining,
-          pot: state.pot,
-          category: state.category || "",
-          clue: state.clue || "",
-          revealIndex: state.revealIndex,
-          awaitingAction: state.awaitingAction,
-          availableActions: state.availableActions,
-          betOptions: state.betOptions,
-          currentBet: state.currentBet,
-          playerContribution: myContribution,
-          currentlyAnswering: state.currentlyAnswering,
-          answerDeadline: state.answerDeadline,
-          deadline: state.deadline,
-        }));
-        // Mark opponent as connected since we're rejoining an active game
-        setOpponentConnected(true);
-      } else {
-        // Normal room state update (waiting or initial join)
-        setGameState((prev) => ({
-          ...prev,
-          phase: data.phase,
-          balances: data.balances,
-          foldsRemaining: data.foldsRemaining,
-          questionIndex: data.questionIndex,
-        }));
-      }
+      setGameState((prev) => ({
+        ...prev,
+        phase: data.phase,
+        balances: data.balances,
+        foldsRemaining: data.foldsRemaining,
+        questionIndex: data.questionIndex,
+      }));
     });
 
     socket.on(SocketEvents.PLAYER_JOINED, (data: PlayerJoinedMessage) => {

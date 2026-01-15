@@ -95,26 +95,6 @@ export interface RoomConfig {
 // SERVER -> CLIENT MESSAGES
 // ============================================================================
 
-// Snapshot of game state for rejoining mid-game
-export interface GameStateSnapshot {
-  phase: GamePhase;
-  questionIndex: number;
-  balances: Record<PlayerId, number>;
-  foldsRemaining: Record<PlayerId, number>;
-  pot: number;
-  category: string | null;
-  clue: string | null;
-  revealIndex: number;
-  awaitingAction: PlayerId | null;
-  availableActions: BetAction[];
-  betOptions: number[];
-  currentBet: number | null;
-  playerContributions: Record<PlayerId, number>;
-  currentlyAnswering: PlayerId | null;
-  answerDeadline: number | null;
-  deadline: number | null;
-}
-
 export interface RoomStateMessage {
   type: "ROOM_STATE";
   roomId: string;
@@ -126,8 +106,6 @@ export interface RoomStateMessage {
   config: RoomConfig;
   opponentAlias: string;
   opponentElo: number;
-  // Optional: full game state for mid-game rejoin
-  currentState?: GameStateSnapshot;
 }
 
 export interface PlayerJoinedMessage {
@@ -359,7 +337,6 @@ export const SocketEvents = {
 export interface RoomCreatedResponse {
   roomId: string;
   playerId: PlayerId;
-  error?: string;
 }
 
 export interface JoinRoomResponse {
