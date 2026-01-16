@@ -1146,6 +1146,69 @@ export class GameRoom {
   }
 
   // ============================================================================
+  // STATE SNAPSHOT (for rejoin)
+  // ============================================================================
+
+  /**
+   * Get a full snapshot of the current game state for a player rejoining mid-game
+   */
+  getFullGameState() {
+    const question = this.questions[this.questionIndex];
+    const awaitingPlayer = this.bettingState.awaitingAction;
+
+    // Calculate bet options for the awaiting player (if in betting phase)
+    let betOptions: number[] = [];
+    if (this.phase === "BETTING" && awaitingPlayer) {
+      const playerBalance = this.players[awaitingPlayer].balance;
+      const affordableTiers = GAME_CONFIG.betTiers.filter((tier) => tier <= playerBalance);
+      betOptions = affordableTiers.includes(playerBalance as any)
+        ? [...affordableTiers]
+        : [...affordableTiers, playerBalance].sort((a, b) => a - b);
+    }
+
+    const currentBet = awaitingPlayer
+      ? this.bettingState.bets[this.getOtherPlayer(awaitingPlayer)]
+      : null;
+
+    let deadline: number | null = null;
+    if (this.phase === "BETTING" && this.timers.betting) {
+      deadline = Date.now() + GAME_CONFIG.betTimeLimitSec * 1000;
+    } else if (this.phase === "CLUE" && this.clueState.clueCompleteAt) {
+      deadline = this.clueState.clueCompleteAt + GAME_CONFIG.postClueTimeoutSec * 1000;
+    } else if (this.phase === "ANSWER" && this.buzzerState.answerDeadline) {
+      deadline = this.buzzerState.answerDeadline;
+    }
+
+    return {
+      phase: this.phase,
+      questionIndex: this.questionIndex,
+      balances: {
+        P1: this.players.P1.balance,
+        P2: this.players.P2.balance,
+      },
+      foldsRemaining: {
+        P1: this.players.P1.foldsRemaining,
+        P2: this.players.P2.foldsRemaining,
+      },
+      pot: this.bettingState.pot,
+      category: question?.category || null,
+      clue: question?.clue || null,
+      revealIndex: this.clueState.revealIndex,
+      awaitingAction: this.bettingState.awaitingAction,
+      availableActions: awaitingPlayer ? this.getAvailableActions(awaitingPlayer) : [],
+      betOptions,
+      currentBet,
+      playerContributions: {
+        P1: this.bettingState.contributions.P1,
+        P2: this.bettingState.contributions.P2,
+      },
+      currentlyAnswering: this.buzzerState.currentlyAnswering,
+      answerDeadline: this.buzzerState.answerDeadline,
+      deadline,
+    };
+  }
+
+  // ============================================================================
   // CLEANUP
   // ============================================================================
 

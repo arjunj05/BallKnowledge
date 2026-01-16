@@ -12,8 +12,10 @@ import { GameRoom } from "./GameRoom.js";
 import type { AuthenticatedSocket } from "./middleware/auth.js";
 
 interface PlayerConnection {
-  socketId: string;
+  socketId: string | null; // null when disconnected
   playerId: PlayerId;
+  dbUserId: string; // Database user ID for rejoin validation
+  connected: boolean;
 }
 
 interface Room {
@@ -21,6 +23,7 @@ interface Room {
   players: Map<PlayerId, PlayerConnection>;
   createdAt: number;
   gameRoom: GameRoom | null;
+  gameStarted: boolean;
 }
 
 function generateRoomId(): string {
@@ -42,6 +45,14 @@ export class RoomManager {
   }
 
   createRoom(socket: Socket): RoomCreatedResponse {
+    const authSocket = socket as AuthenticatedSocket;
+    const dbUserId = authSocket.dbUserId;
+
+    if (!dbUserId) {
+      console.log(`[RoomManager] Cannot create room - user not authenticated`);
+      return { roomId: "", playerId: "P1" };
+    }
+
     let roomId = generateRoomId();
     while (this.rooms.has(roomId)) {
       roomId = generateRoomId();
@@ -52,9 +63,15 @@ export class RoomManager {
       players: new Map(),
       createdAt: Date.now(),
       gameRoom: null,
+      gameStarted: false,
     };
 
-    room.players.set("P1", { socketId: socket.id, playerId: "P1" });
+    room.players.set("P1", {
+      socketId: socket.id,
+      playerId: "P1",
+      dbUserId,
+      connected: true,
+    });
     this.rooms.set(roomId, room);
     this.socketToRoom.set(socket.id, roomId);
 
@@ -88,6 +105,14 @@ export class RoomManager {
   }
 
   joinRoom(socket: Socket, roomId: string): JoinRoomResponse {
+    const authSocket = socket as AuthenticatedSocket;
+    const dbUserId = authSocket.dbUserId;
+
+    if (!dbUserId) {
+      console.log(`[RoomManager] Cannot join room - user not authenticated`);
+      return { success: false, error: "Not authenticated" };
+    }
+
     const room = this.rooms.get(roomId.toUpperCase());
 
     if (!room) {
@@ -95,12 +120,27 @@ export class RoomManager {
       return { success: false, error: "Room not found" };
     }
 
-    if (room.players.size >= 2) {
+    // Check if this user is already in this room (rejoin case)
+    for (const [playerId, connection] of room.players) {
+      if (connection.dbUserId === dbUserId) {
+        console.log(`[RoomManager] User ${dbUserId} rejoining room ${roomId} as ${playerId}`);
+        return this.rejoinRoom(socket, room.roomId, playerId);
+      }
+    }
+
+    // Check if room is full (count connected players)
+    const connectedPlayers = Array.from(room.players.values()).filter(p => p.connected);
+    if (connectedPlayers.length >= 2) {
       console.log(`[RoomManager] Room ${roomId} is full`);
       return { success: false, error: "Room is full" };
     }
 
-    room.players.set("P2", { socketId: socket.id, playerId: "P2" });
+    room.players.set("P2", {
+      socketId: socket.id,
+      playerId: "P2",
+      dbUserId,
+      connected: true,
+    });
     this.socketToRoom.set(socket.id, room.roomId);
 
     socket.join(room.roomId);
@@ -149,19 +189,104 @@ export class RoomManager {
     return { success: true, playerId: "P2" };
   }
 
+  private rejoinRoom(socket: Socket, roomId: string, playerId: PlayerId): JoinRoomResponse {
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return { success: false, error: "Room not found" };
+    }
+
+    const connection = room.players.get(playerId);
+    if (!connection) {
+      return { success: false, error: "Player slot not found" };
+    }
+
+    // Update connection with new socket
+    connection.socketId = socket.id;
+    connection.connected = true;
+
+    this.socketToRoom.set(socket.id, roomId);
+    socket.join(roomId);
+
+    // Re-register socket with game room
+    if (room.gameRoom) {
+      room.gameRoom.registerSocket(socket.id, playerId);
+    }
+
+    console.log(`[RoomManager] User rejoined room ${roomId} as ${playerId}`);
+
+    // Send current game state to the reconnecting player
+    if (room.gameRoom && room.gameStarted) {
+      const opponentId: PlayerId = playerId === "P1" ? "P2" : "P1";
+      const opponentMetadata = room.gameRoom.getPlayerMetadata(opponentId);
+      const gameState = room.gameRoom.getFullGameState();
+
+      const roomState: RoomStateMessage = {
+        type: "ROOM_STATE",
+        roomId: room.roomId,
+        you: playerId,
+        phase: gameState.phase,
+        balances: gameState.balances,
+        foldsRemaining: gameState.foldsRemaining,
+        questionIndex: gameState.questionIndex,
+        config: {
+          revealRateCharsPerSec: GAME_CONFIG.revealRateCharsPerSec,
+          postClueTimeoutSec: GAME_CONFIG.postClueTimeoutSec,
+          answerTimeLimitSec: GAME_CONFIG.answerTimeLimitSec,
+          categoryRevealSec: GAME_CONFIG.categoryRevealSec,
+          betTimeLimitSec: GAME_CONFIG.betTimeLimitSec,
+          foldsPerPlayer: GAME_CONFIG.foldsPerPlayer,
+        },
+        opponentAlias: opponentMetadata?.alias || "Opponent",
+        opponentElo: opponentMetadata?.elo || 1200,
+        // Include additional state for mid-game rejoin
+        currentState: gameState,
+      };
+
+      socket.emit(SocketEvents.ROOM_STATE, roomState);
+    } else {
+      // Game not started yet - send waiting state
+      const roomState: RoomStateMessage = {
+        type: "ROOM_STATE",
+        roomId: room.roomId,
+        you: playerId,
+        phase: "WAITING",
+        balances: { P1: GAME_CONFIG.startingBalance, P2: GAME_CONFIG.startingBalance },
+        foldsRemaining: { P1: GAME_CONFIG.foldsPerPlayer, P2: GAME_CONFIG.foldsPerPlayer },
+        questionIndex: 0,
+        config: {
+          revealRateCharsPerSec: GAME_CONFIG.revealRateCharsPerSec,
+          postClueTimeoutSec: GAME_CONFIG.postClueTimeoutSec,
+          answerTimeLimitSec: GAME_CONFIG.answerTimeLimitSec,
+          categoryRevealSec: GAME_CONFIG.categoryRevealSec,
+          betTimeLimitSec: GAME_CONFIG.betTimeLimitSec,
+          foldsPerPlayer: GAME_CONFIG.foldsPerPlayer,
+        },
+        opponentAlias: "Waiting for opponent...",
+        opponentElo: 1200,
+      };
+
+      socket.emit(SocketEvents.ROOM_STATE, roomState);
+    }
+
+    return { success: true, playerId };
+  }
+
   private async startGame(room: Room): Promise<void> {
     console.log(`[RoomManager] Starting game in room ${room.roomId}`);
     room.gameRoom = new GameRoom(this.io, room.roomId);
+    room.gameStarted = true;
 
     // Set player database IDs and register sockets from authenticated sockets
     for (const [playerId, connection] of room.players) {
-      const socket = this.io.sockets.sockets.get(connection.socketId) as AuthenticatedSocket;
-      if (socket?.dbUserId) {
-        await room.gameRoom.setPlayerDbId(playerId, socket.dbUserId);
-        console.log(`[RoomManager] Set ${playerId} dbUserId: ${socket.dbUserId}`);
+      if (connection.socketId) {
+        const socket = this.io.sockets.sockets.get(connection.socketId) as AuthenticatedSocket;
+        if (socket?.dbUserId) {
+          await room.gameRoom.setPlayerDbId(playerId, socket.dbUserId);
+          console.log(`[RoomManager] Set ${playerId} dbUserId: ${socket.dbUserId}`);
+        }
+        // Register socket for player identity validation
+        room.gameRoom.registerSocket(connection.socketId, playerId);
       }
-      // Register socket for player identity validation
-      room.gameRoom.registerSocket(connection.socketId, playerId);
     }
 
     // Load questions for the match from DB before starting
@@ -177,11 +302,13 @@ export class RoomManager {
       });
       // Clean up the room
       for (const [, connection] of room.players) {
-        const socket = this.io.sockets.sockets.get(connection.socketId);
-        if (socket) {
-          socket.leave(room.roomId);
+        if (connection.socketId) {
+          const socket = this.io.sockets.sockets.get(connection.socketId);
+          if (socket) {
+            socket.leave(room.roomId);
+          }
+          this.socketToRoom.delete(connection.socketId);
         }
-        this.socketToRoom.delete(connection.socketId);
       }
       room.gameRoom?.destroy();
       this.rooms.delete(room.roomId);
@@ -191,6 +318,7 @@ export class RoomManager {
 
     // Send updated room state with opponent info to both players
     for (const [playerId, connection] of room.players) {
+      if (!connection.socketId) continue;
       const socket = this.io.sockets.sockets.get(connection.socketId);
       if (socket) {
         const opponentId: PlayerId = playerId === "P1" ? "P2" : "P1";
@@ -237,7 +365,11 @@ export class RoomManager {
     for (const [playerId, connection] of room.players) {
       if (connection.socketId === socket.id) {
         disconnectedPlayer = playerId;
-        room.players.delete(playerId);
+
+        // Mark as disconnected but keep the slot reserved
+        connection.socketId = null;
+        connection.connected = false;
+
         // Unregister socket from game room
         if (room.gameRoom) {
           room.gameRoom.unregisterSocket(socket.id);
@@ -246,17 +378,22 @@ export class RoomManager {
       }
     }
 
-    // Clean up Socket.IO room membership to prevent memory leaks
+    // Clean up Socket.IO room membership
     socket.leave(roomId);
     this.socketToRoom.delete(socket.id);
 
-    console.log(`[RoomManager] ${socket.id} (${disconnectedPlayer}) left room ${roomId}`);
+    console.log(`[RoomManager] ${socket.id} (${disconnectedPlayer}) disconnected from room ${roomId}`);
 
-    if (room.players.size === 0) {
+    // Check if both players are disconnected
+    const connectedPlayers = Array.from(room.players.values()).filter(p => p.connected);
+
+    if (connectedPlayers.length === 0 && !room.gameStarted) {
+      // No game started and no one connected - clean up
       room.gameRoom?.destroy();
       this.rooms.delete(roomId);
-      console.log(`[RoomManager] Room ${roomId} deleted (empty)`);
+      console.log(`[RoomManager] Room ${roomId} deleted (no players, game not started)`);
     } else if (disconnectedPlayer) {
+      // Notify remaining player that opponent disconnected
       this.io.to(roomId).emit(SocketEvents.PLAYER_LEFT, {
         type: "PLAYER_LEFT",
         player: disconnectedPlayer,
