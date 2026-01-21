@@ -253,6 +253,7 @@ export function useSocket(
         currentlyAnswering: null,
         answerDeadline: null,
         opponentTyping: null,
+        hasBuzzed: false,
       }));
     });
 
@@ -431,7 +432,8 @@ export function useSocket(
   const handleBuzz = useCallback(() => {
     if (!socket) return;
     socket.emit(SocketEvents.BUZZ);
-  }, []);
+    setGameState((prev) => ({ ...prev, hasBuzzed: true }));
+  }, [setGameState]);
 
   const handleSubmitAnswer = useCallback((answerInput: string) => {
     if (!socket) return;

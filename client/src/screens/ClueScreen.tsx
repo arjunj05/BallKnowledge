@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { PlayerId } from "shared";
 import { GameHeader } from "../components/GameHeader";
 import { Timer } from "../components/Timer";
@@ -13,6 +14,7 @@ interface ClueScreenProps {
   timeRemaining: number | null;
   opponentAlias?: string;
   opponentElo?: number;
+  hasBuzzed: boolean;
   onBuzz: () => void;
 }
 
@@ -27,10 +29,19 @@ export function ClueScreen({
   timeRemaining,
   opponentAlias,
   opponentElo,
+  hasBuzzed,
   onBuzz,
 }: ClueScreenProps) {
   const revealedClue = clue.substring(0, revealIndex);
   const isClueComplete = revealIndex >= clue.length;
+  const clueRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom as clue reveals (for mobile when text overflows)
+  useEffect(() => {
+    if (clueRef.current) {
+      clueRef.current.scrollTop = clueRef.current.scrollHeight;
+    }
+  }, [revealIndex]);
 
   return (
     <div className="min-h-screen bg-broadcast-dark text-white flex flex-col">
@@ -51,7 +62,10 @@ export function ClueScreen({
 
           {/* Clue display */}
           <div className="p-6">
-            <div className="min-h-[140px] text-xl leading-relaxed mb-6 font-mono text-white bg-broadcast-900 rounded-lg p-4 border border-white/10">
+            <div
+              ref={clueRef}
+              className="min-h-[140px] max-h-[40vh] overflow-y-auto text-xl leading-relaxed mb-6 font-mono text-white bg-broadcast-900 rounded-lg p-4 border border-white/10"
+            >
               {revealedClue}
               {!isClueComplete && (
                 <span className="inline-block w-2 h-5 bg-espn-yellow ml-1 animate-pulse" />
@@ -61,23 +75,29 @@ export function ClueScreen({
             {/* Massive BUZZ button */}
             <button
               onClick={onBuzz}
-              className="
+              disabled={hasBuzzed}
+              className={`
                 w-full py-6 rounded-lg text-3xl font-display uppercase tracking-wider
-                bg-gradient-to-b from-live to-espn-darkRed
-                hover:from-red-500 hover:to-espn-red
-                shadow-[0_6px_0_#660000,0_8px_30px_rgba(255,0,0,0.4)]
-                hover:shadow-[0_8px_0_#660000,0_10px_40px_rgba(255,0,0,0.5)]
-                active:shadow-[0_2px_0_#660000,0_4px_20px_rgba(255,0,0,0.3)]
-                active:translate-y-1
-                transition-all
-                animate-pulse
-                relative
-                overflow-hidden
-              "
+                transition-all relative overflow-hidden
+                ${hasBuzzed
+                  ? "bg-gradient-to-b from-gray-600 to-gray-700 shadow-[0_4px_0_#333] cursor-not-allowed opacity-60"
+                  : `bg-gradient-to-b from-live to-espn-darkRed
+                     hover:from-red-500 hover:to-espn-red
+                     shadow-[0_6px_0_#660000,0_8px_30px_rgba(255,0,0,0.4)]
+                     hover:shadow-[0_8px_0_#660000,0_10px_40px_rgba(255,0,0,0.5)]
+                     active:shadow-[0_2px_0_#660000,0_4px_20px_rgba(255,0,0,0.3)]
+                     active:translate-y-1
+                     animate-pulse`
+                }
+              `}
             >
-              {/* Shine effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shine_2s_ease-in-out_infinite]" />
-              <span className="relative z-10 drop-shadow-lg">BUZZ!</span>
+              {/* Shine effect - only when not buzzed */}
+              {!hasBuzzed && (
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shine_2s_ease-in-out_infinite]" />
+              )}
+              <span className="relative z-10 drop-shadow-lg">
+                {hasBuzzed ? "BUZZED" : "BUZZ!"}
+              </span>
             </button>
 
             {isClueComplete && (

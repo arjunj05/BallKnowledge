@@ -180,6 +180,7 @@ function App() {
           timeRemaining={timeRemaining}
           opponentAlias={opponentAlias}
           opponentElo={opponentElo}
+          hasBuzzed={gameState.hasBuzzed}
           onBuzz={handleBuzz}
         />
         {notification && (
