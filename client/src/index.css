@@ -195,3 +195,14 @@
   background: rgba(204, 0, 0, 0.4);
   color: white;
 }
+
+/* Wrong answer feedback animation - red border glow that fades */
+@keyframes wrong-border-glow {
+  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0), inset 0 0 0 0 rgba(220, 38, 38, 0); }
+  15% { box-shadow: 0 0 20px 3px rgba(220, 38, 38, 0.8), inset 0 0 30px rgba(220, 38, 38, 0.15); }
+  100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0), inset 0 0 0 0 rgba(220, 38, 38, 0); }
+}
+
+.animate-wrong-answer {
+  animation: wrong-border-glow 1s ease-out;
+}

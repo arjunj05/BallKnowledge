@@ -181,6 +181,7 @@ function App() {
           opponentAlias={opponentAlias}
           opponentElo={opponentElo}
           hasBuzzed={gameState.hasBuzzed}
+          opponentWasWrong={gameState.opponentWasWrong}
           onBuzz={handleBuzz}
         />
         {notification && (

@@ -15,6 +15,7 @@ interface ClueScreenProps {
   opponentAlias?: string;
   opponentElo?: number;
   hasBuzzed: boolean;
+  opponentWasWrong: boolean;
   onBuzz: () => void;
 }
 
@@ -30,6 +31,7 @@ export function ClueScreen({
   opponentAlias,
   opponentElo,
   hasBuzzed,
+  opponentWasWrong,
   onBuzz,
 }: ClueScreenProps) {
   const revealedClue = clue.substring(0, revealIndex);
@@ -51,7 +53,7 @@ export function ClueScreen({
         {/* Background */}
         <div className="absolute inset-0 bg-diagonal-stripes opacity-10 pointer-events-none" />
 
-        <div className="broadcast-card rounded-lg w-full max-w-2xl relative z-10 overflow-hidden animate-slide-in-up">
+        <div className={`broadcast-card rounded-lg w-full max-w-2xl relative z-10 overflow-hidden animate-slide-in-up ${opponentWasWrong ? 'animate-wrong-answer' : ''}`}>
           {/* Category header */}
           <div className="bg-gradient-to-r from-espn-red to-espn-darkRed px-6 py-3 flex items-center justify-between">
             <span className="font-sans text-sm uppercase tracking-widest text-white/80">{category}</span>

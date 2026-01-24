@@ -22,6 +22,7 @@ export interface GameState {
   answerDeadline: number | null;
   opponentTyping: string | null;
   hasBuzzed: boolean;
+  opponentWasWrong: boolean;
   lastOutcome: {
     outcome: string;
     correctAnswer: string;
@@ -52,6 +53,7 @@ const initialGameState: GameState = {
   answerDeadline: null,
   opponentTyping: null,
   hasBuzzed: false,
+  opponentWasWrong: false,
   lastOutcome: null,
   winner: null,
   finalBalances: null,

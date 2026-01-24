@@ -254,6 +254,7 @@ export function useSocket(
         answerDeadline: null,
         opponentTyping: null,
         hasBuzzed: false,
+        opponentWasWrong: false,
       }));
     });
 
@@ -304,6 +305,7 @@ export function useSocket(
         currentlyAnswering: null,
         answerDeadline: null,
         opponentTyping: null,
+        opponentWasWrong: true,
       }));
     });
 

@@ -31,25 +31,54 @@ export function ResolutionScreen({
   opponentAlias,
   opponentElo,
 }: ResolutionScreenProps) {
-  const isWinner =
+  const myAnswer = playerId === "P1" ? P1Answer : P2Answer;
+
+  // Determine what happened this round
+  const iAnsweredCorrectly =
     (outcome === "P1_WIN" && playerId === "P1") ||
-    (outcome === "P2_WIN" && playerId === "P2") ||
+    (outcome === "P2_WIN" && playerId === "P2");
+  const opponentAnsweredCorrectly =
+    (outcome === "P1_WIN" && playerId === "P2") ||
+    (outcome === "P2_WIN" && playerId === "P1");
+  const iFolded =
+    (outcome === "P1_FOLD" && playerId === "P1") ||
+    (outcome === "P2_FOLD" && playerId === "P2");
+  const opponentFolded =
     (outcome === "P1_FOLD" && playerId === "P2") ||
     (outcome === "P2_FOLD" && playerId === "P1");
   const isDraw = outcome === "DRAW";
-  const isFold = outcome.includes("FOLD");
 
   const getOutcomeGradient = () => {
-    if (isWinner) return "from-score-green to-green-700";
+    if (iAnsweredCorrectly || opponentFolded) return "from-score-green to-green-700";
     if (isDraw) return "from-espn-yellow to-yellow-600";
     return "from-espn-red to-espn-darkRed";
   };
 
   const getOutcomeText = () => {
-    if (isWinner) return "You Win!";
-    if (isDraw) return "Draw";
-    if (isFold) return "Fold";
-    return "Wrong!";
+    // You buzzed and got it right
+    if (iAnsweredCorrectly) return "Correct!";
+
+    // Opponent buzzed and got it right (you were too slow or didn't buzz)
+    if (opponentAnsweredCorrectly) return "Too Slow!";
+
+    // You folded during betting
+    if (iFolded) return "You Folded";
+
+    // Opponent folded during betting
+    if (opponentFolded) return "Opponent Folded";
+
+    // Draw scenarios - neither wins, pot returned
+    if (isDraw) {
+      // Neither player buzzed
+      if (!P1Answer && !P2Answer) return "Time's Up!";
+      // Both buzzed and both wrong
+      if (P1Answer && P2Answer) return "Both Wrong!";
+      // One buzzed and got it wrong, other didn't buzz
+      if (myAnswer) return "Incorrect!";
+      return "No Answer";
+    }
+
+    return "Round Over";
   };
 
   return (
