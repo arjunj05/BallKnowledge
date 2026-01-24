@@ -54,9 +54,11 @@ export function LobbyScreen({ connected, error, onCreateRoom, onJoinRoom, onOpen
       <div className="relative z-10 text-center animate-slide-in-up">
         {/* Logo/Title */}
         <div className="mb-8">
-          <h1 className="font-display text-7xl md:text-8xl tracking-tight text-white mb-2 drop-shadow-lg">
-            BALL KNOWLEDGE
-          </h1>
+          <img
+            src="/fullLogo.png"
+            alt="Ball Knowledge"
+            className="h-72 md:h-96 mx-auto -mb-16 md:-mb-20 drop-shadow-lg"
+          />
           <div className="lower-third inline-block px-8 py-2">
             <p className="font-sans text-lg uppercase tracking-widest text-white">
               Head-to-Head Trivia Showdown
